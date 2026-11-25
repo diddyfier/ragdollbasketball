@@ -1,0 +1,4215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>NBA 2K14 Blacktop - Ragdoll Edition</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Teko:wght@600;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #0b0c10;
+      font-family: 'Oswald', sans-serif;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .font-teko {
+      font-family: 'Teko', sans-serif;
+    }
+    .font-oswald {
+      font-family: 'Oswald', sans-serif;
+    }
+    .font-inter {
+      font-family: 'Inter', sans-serif;
+    }
+    /* NBA 2K14 Skewed Broadcast Styling */
+    .skew-2k {
+      transform: skewX(-12deg);
+    }
+    .unskew-2k {
+      transform: skewX(12deg);
+    }
+    .gloss-panel {
+      background: linear-gradient(180deg, rgba(28, 30, 36, 0.94) 0%, rgba(12, 13, 17, 0.97) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    .red-accent-bar {
+      background: linear-gradient(90deg, #b91c1c 0%, #ef4444 50%, #991b1b 100%);
+    }
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.6); }
+      50% { box-shadow: 0 0 28px rgba(239, 68, 68, 0.95); }
+    }
+    .btn-2k {
+      background: linear-gradient(180deg, #dc2626 0%, #991b1b 100%);
+      border: 1px solid #f87171;
+      transition: all 0.15s ease;
+      animation: pulseGlow 2.2s infinite;
+    }
+    .btn-2k:hover {
+      background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%);
+      transform: skewX(-12deg) scale(1.04);
+    }
+    .btn-2k:active {
+      transform: skewX(-12deg) scale(0.97);
+    }
+
+    /* Cinematic Intro & Main Menu Animations */
+    @keyframes sweepShine {
+      0% { transform: translateX(-140%) skewX(-20deg); }
+      55%, 100% { transform: translateX(260%) skewX(-20deg); }
+    }
+    .shine-sweep {
+      position: relative;
+      overflow: hidden;
+    }
+    .shine-sweep::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 45%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.28), transparent);
+      animation: sweepShine 3.2s infinite ease-in-out;
+      pointer-events: none;
+    }
+
+    @keyframes slideInSkewLeft {
+      0% { opacity: 0; transform: translateX(-60px) skewX(-12deg); }
+      100% { opacity: 1; transform: translateX(0) skewX(-12deg); }
+    }
+    .menu-card-enter {
+      opacity: 0;
+      animation: slideInSkewLeft 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes titleSlam {
+      0% { opacity: 0; transform: scale(1.45) skewX(-12deg); filter: blur(6px); }
+      70% { opacity: 1; transform: scale(0.97) skewX(-12deg); filter: blur(0); }
+      100% { opacity: 1; transform: scale(1) skewX(-12deg); filter: blur(0); }
+    }
+    .intro-slam {
+      animation: titleSlam 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    @keyframes tickerScroll {
+      0% { transform: translateX(0%); }
+      100% { transform: translateX(-50%); }
+    }
+    .ticker-track {
+      display: flex;
+      width: max-content;
+      animation: tickerScroll 28s linear infinite;
+    }
+    .ticker-track:hover {
+      animation-play-state: paused;
+    }
+
+    .menu-tile {
+      transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+    .menu-tile:hover {
+      transform: translateX(10px) skewX(-12deg) scale(1.02);
+      border-color: rgba(250, 204, 21, 0.85);
+      box-shadow: 0 14px 36px rgba(220, 38, 38, 0.45), inset 0 1px 0 rgba(255,255,255,0.35);
+    }
+  </style>
+</head>
+<body class="relative w-full h-full bg-neutral-950 text-white overflow-hidden">
+
+  <!-- Main 2.5D Game Canvas -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- NBA 2K14 Broadcast Top HUD (Scorebug + Stacked Top-Left Cooldowns & Commentary) -->
+  <div id="hudTop" class="hidden pointer-events-none fixed top-3 left-3 right-3 sm:top-4 sm:left-6 sm:right-6 flex items-start justify-between gap-2 z-10">
+    
+    <!-- Top-Left Column: Scorebug -> Abilities & Cooldowns -> Dynamic Commentary Callout -->
+    <div class="flex flex-col items-start gap-2 max-w-[92vw] sm:max-w-xl">
+      
+      <!-- 1. NBA 2K14 Blacktop Scorebug -->
+      <div class="flex items-stretch skew-2k gloss-panel rounded-md overflow-hidden shadow-2xl">
+        <!-- 2K14 Red Emblem -->
+        <div class="red-accent-bar px-3 py-1.5 flex flex-col justify-center items-center border-r border-white/20">
+          <span class="unskew-2k font-teko text-xl sm:text-2xl font-bold leading-none tracking-wider text-white drop-shadow">2K14</span>
+          <span class="unskew-2k text-[9px] sm:text-[10px] font-bold tracking-widest uppercase text-red-100">BLACKTOP</span>
+        </div>
+
+        <!-- Player 1 (BALLER) -->
+        <div class="flex items-center px-3 py-1.5 bg-gradient-to-r from-red-950/80 to-neutral-900/90 border-r border-white/10">
+          <div class="unskew-2k flex items-center gap-2.5">
+            <div class="w-2.5 h-7 bg-red-500 rounded-xs shadow-[0_0_8px_#ef4444]"></div>
+            <div>
+              <div class="text-[10px] text-red-400 font-bold tracking-wider leading-none">HOME • 99 OVR</div>
+              <div class="text-sm sm:text-base font-bold tracking-wide text-white leading-tight">BALLER</div>
+            </div>
+            <div id="playerScore" class="font-teko text-3xl sm:text-4xl font-bold text-white pl-2 leading-none">0</div>
+          </div>
+        </div>
+
+        <!-- CPU (LOCKDOWN) -->
+        <div class="flex items-center px-3 py-1.5 bg-gradient-to-r from-neutral-900/90 to-blue-950/80 border-r border-white/10">
+          <div class="unskew-2k flex items-center gap-2.5">
+            <div id="cpuScore" class="font-teko text-3xl sm:text-4xl font-bold text-white pr-2 leading-none">0</div>
+            <div class="text-right">
+              <div id="cpuDifficultyBadge" class="text-[10px] text-sky-400 font-bold tracking-wider leading-none">CPU • ALL-STAR</div>
+              <div class="text-sm sm:text-base font-bold tracking-wide text-white leading-tight">LOCKDOWN</div>
+            </div>
+            <div class="w-2.5 h-7 bg-sky-500 rounded-xs shadow-[0_0_8px_#0ea5e9]"></div>
+          </div>
+        </div>
+
+        <!-- Possession / Target Score -->
+        <div class="px-3 py-1.5 bg-black/70 flex flex-col justify-center items-center">
+          <span id="possessionBadge" class="unskew-2k text-[10px] font-bold px-1.5 py-0.5 rounded-xs bg-amber-500/20 text-amber-300 border border-amber-400/40 tracking-wider">YOUR BALL</span>
+          <span id="targetScoreLabel" class="unskew-2k text-[11px] text-neutral-300 font-semibold mt-0.5 tracking-wide">GAME TO 11</span>
+        </div>
+      </div>
+
+      <!-- 2. Abilities & Cooldown Gauges (Stacked cleanly below Scorebug on Top-Left) -->
+      <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+        <!-- Rainbow Flick Ultimate Gauge (3-in-a-row Streak) -->
+        <div id="ultHudPanel" class="skew-2k gloss-panel px-2.5 py-1 rounded-md flex items-center gap-2 transition-all duration-200">
+          <div class="unskew-2k flex items-center gap-1.5">
+            <span class="px-1.5 py-0.5 text-[11px] font-bold bg-gradient-to-r from-pink-500 via-amber-400 to-cyan-400 text-black rounded-xs shadow">R</span>
+            <div>
+              <div class="text-[9px] uppercase tracking-wider text-fuchsia-300 font-bold leading-none">RAINBOW FLICK</div>
+              <div class="flex items-center gap-1 mt-1">
+                <div id="streakPip1" class="w-4 h-1.5 rounded-xs bg-neutral-800 border border-white/15"></div>
+                <div id="streakPip2" class="w-4 h-1.5 rounded-xs bg-neutral-800 border border-white/15"></div>
+                <div id="streakPip3" class="w-4 h-1.5 rounded-xs bg-neutral-800 border border-white/15"></div>
+              </div>
+            </div>
+            <span id="ultStatusText" class="text-[11px] font-bold text-neutral-400 tracking-wider">0/3</span>
+          </div>
+        </div>
+
+        <!-- Spin Hook Kick Cooldown Pill -->
+        <div class="skew-2k gloss-panel px-2.5 py-1 rounded-md flex items-center gap-2">
+          <div class="unskew-2k flex items-center gap-1.5">
+            <span class="px-1.5 py-0.5 text-[11px] font-bold bg-amber-500 text-black rounded-xs shadow">Q</span>
+            <div>
+              <div class="text-[9px] uppercase tracking-wider text-neutral-400 font-bold leading-none">SPIN HOOK</div>
+              <div class="w-16 sm:w-20 h-1.5 bg-neutral-800 rounded-full overflow-hidden mt-1 border border-white/10">
+                <div id="kickCooldownBar" class="h-full bg-gradient-to-r from-amber-500 to-red-500 transition-all duration-75" style="width: 100%;"></div>
+              </div>
+            </div>
+            <span id="kickStatusText" class="text-[11px] font-bold text-amber-400 tracking-wider">READY</span>
+          </div>
+        </div>
+
+        <!-- Judo Seoi Nage Cooldown Pill (Defensive Slam - 15s Cooldown) -->
+        <div class="skew-2k gloss-panel px-2.5 py-1 rounded-md flex items-center gap-2">
+          <div class="unskew-2k flex items-center gap-1.5">
+            <span class="px-1.5 py-0.5 text-[11px] font-bold bg-indigo-500 text-white rounded-xs shadow">M</span>
+            <div>
+              <div class="text-[9px] uppercase tracking-wider text-indigo-300 font-bold leading-none">SLAM (DEF)</div>
+              <div class="w-16 sm:w-20 h-1.5 bg-neutral-800 rounded-full overflow-hidden mt-1 border border-white/10">
+                <div id="throwCooldownBar" class="h-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 transition-all duration-75" style="width: 0%;"></div>
+              </div>
+            </div>
+            <span id="throwStatusText" class="text-[11px] font-bold text-neutral-400 tracking-wider">15.0s</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Dynamic Event Callout Banner (Commentary positioned in Top-Left under Spin Hook & Slam Cooldowns) -->
+      <div id="calloutContainer" class="pointer-events-none flex flex-col items-start justify-start mt-0.5">
+        <div id="calloutBanner" class="opacity-0 transform scale-75 origin-top-left transition-all duration-150 skew-2k px-4 py-1.5 rounded-md border-2 shadow-2xl text-left">
+          <div id="calloutSub" class="unskew-2k text-[10px] sm:text-xs font-bold tracking-widest uppercase"></div>
+          <div id="calloutMain" class="unskew-2k font-teko text-2xl sm:text-4xl font-bold leading-none tracking-wide uppercase drop-shadow"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Top-Right: Mute / Audio Toggle -->
+    <div class="flex items-center gap-2 shrink-0">
+      <button id="musicBtn" class="skew-2k gloss-panel px-3 py-2 rounded-md text-xs font-bold tracking-wider text-amber-300 hover:text-white hover:border-amber-400/50 pointer-events-auto cursor-pointer">
+        <span class="unskew-2k block" id="musicLabel">MUSIC: ON</span>
+      </button>
+      <button id="muteBtn" class="skew-2k gloss-panel px-3 py-2 rounded-md text-xs font-bold tracking-wider text-neutral-200 hover:text-white hover:border-white/30 pointer-events-auto cursor-pointer">
+        <span class="unskew-2k block" id="muteLabel">SFX: ON</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Bottom NBA 2K14 Stamina / Turbo & Controls Legend -->
+  <div id="hudBottom" class="hidden pointer-events-none fixed bottom-3 left-3 right-3 sm:bottom-4 sm:left-6 sm:right-6 flex flex-col sm:flex-row items-center justify-between gap-2 z-10">
+    <!-- Stamina & Hype Meter -->
+    <div class="skew-2k gloss-panel px-3.5 py-1.5 rounded-md flex items-center gap-4">
+      <div class="unskew-2k flex items-center gap-2">
+        <span class="text-[11px] font-bold tracking-wider text-amber-400">TURBO</span>
+        <div class="w-28 sm:w-36 h-2.5 bg-neutral-800 rounded-full overflow-hidden border border-white/10">
+          <div id="staminaBar" class="h-full bg-gradient-to-r from-amber-500 via-yellow-400 to-lime-400" style="width: 100%;"></div>
+        </div>
+      </div>
+      <div class="unskew-2k flex items-center gap-2">
+        <span class="text-[11px] font-bold tracking-wider text-red-400">TAKEOVER</span>
+        <div class="w-24 sm:w-32 h-2.5 bg-neutral-800 rounded-full overflow-hidden border border-white/10">
+          <div id="hypeBar" class="h-full bg-gradient-to-r from-red-600 to-orange-400" style="width: 25%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compact On-Screen Controls Legend -->
+    <div class="hidden md:flex skew-2k gloss-panel px-3.5 py-1.5 rounded-md items-center gap-3 text-xs tracking-wide text-neutral-200">
+      <div class="unskew-2k flex items-center gap-1.5"><kbd class="px-1.5 py-0.5 bg-neutral-800 border border-white/20 rounded-xs text-amber-300 font-bold">WASD</kbd> Move</div>
+      <div class="unskew-2k flex items-center gap-1.5"><kbd class="px-1.5 py-0.5 bg-neutral-800 border border-white/20 rounded-xs text-amber-300 font-bold">SPACE</kbd> Shot / Block</div>
+      <div class="unskew-2k flex items-center gap-1.5"><kbd class="px-1.5 py-0.5 bg-neutral-800 border border-white/20 rounded-xs text-amber-300 font-bold">J</kbd> Crossover</div>
+      <div class="unskew-2k flex items-center gap-1.5"><kbd class="px-1.5 py-0.5 bg-neutral-800 border border-white/20 rounded-xs text-orange-300 font-bold">L</kbd> Spin Move</div>
+      <div class="unskew-2k flex items-center gap-1.5"><kbd class="px-1.5 py-0.5 bg-neutral-800 border border-white/20 rounded-xs text-red-400 font-bold">Q</kbd> Spin Kick</div>
+      <div class="unskew-2k flex items-center gap-1.5"><kbd class="px-1.5 py-0.5 bg-neutral-800 border border-white/20 rounded-xs text-indigo-300 font-bold">M</kbd> Seoi Nage (Def)</div>
+      <div class="unskew-2k flex items-center gap-1.5"><kbd class="px-1.5 py-0.5 bg-neutral-800 border border-white/20 rounded-xs text-cyan-300 font-bold">K</kbd> Steal</div>
+      <div class="unskew-2k flex items-center gap-1.5"><kbd class="px-1.5 py-0.5 bg-neutral-800 border border-white/20 rounded-xs text-fuchsia-300 font-bold">R</kbd> Rainbow Ult</div>
+    </div>
+  </div>
+
+  <!-- Mobile Touch Controls (Shown on Touch / Small Screens) -->
+  <div id="mobileControls" class="hidden fixed bottom-16 left-3 right-3 flex md:hidden items-end justify-between z-20 pointer-events-none">
+    <!-- Virtual Joystick Area -->
+    <div id="joystickZone" class="w-28 h-28 rounded-full bg-white/10 border border-white/25 backdrop-blur-xs relative pointer-events-auto touch-none flex items-center justify-center">
+      <div id="joystickKnob" class="w-11 h-11 rounded-full bg-red-500/80 border-2 border-white shadow-lg"></div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex flex-col gap-2 pointer-events-auto">
+      <div class="flex gap-2 justify-end">
+        <button id="btnMobileUlt" class="hidden w-14 h-14 rounded-full bg-gradient-to-br from-fuchsia-600 via-amber-500 to-cyan-500 border-2 border-white font-bold text-[10px] tracking-wider shadow-[0_0_20px_rgba(232,121,249,0.9)] active:scale-90 text-black leading-tight">RAINBOW<br>FLICK</button>
+        <button id="btnMobileThrow" class="w-14 h-14 rounded-full bg-indigo-600/90 border-2 border-indigo-200 font-bold text-[10px] leading-tight tracking-wider shadow-lg active:scale-90">M<br>THROW</button>
+        <button id="btnMobileSteal" class="w-14 h-14 rounded-full bg-sky-600/90 border-2 border-sky-200 font-bold text-xs tracking-wider shadow-lg active:scale-90">STEAL</button>
+        <button id="btnMobileSpin" class="w-14 h-14 rounded-full bg-orange-600/90 border-2 border-orange-200 font-bold text-xs tracking-wider shadow-lg active:scale-90">L SPIN</button>
+        <button id="btnMobileKick" class="w-14 h-14 rounded-full bg-amber-600/90 border-2 border-amber-300 font-bold text-xs tracking-wider shadow-lg active:scale-90">Q KICK</button>
+      </div>
+      <div class="flex gap-2 justify-end">
+        <button id="btnMobileCross" class="w-16 h-16 rounded-full bg-neutral-800/90 border-2 border-white/40 font-bold text-xs tracking-wider shadow-lg active:scale-90">J CROSS</button>
+        <button id="btnMobileShoot" class="w-16 h-16 rounded-full bg-red-600/95 border-2 border-red-200 font-bold text-[11px] leading-tight tracking-wider shadow-lg active:scale-90">SHOOT<br>BLOCK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CINEMATIC NBA 2K14 INTRO SPLASH OVERLAY -->
+  <div id="introOverlay" class="fixed inset-0 z-40 pointer-events-auto flex flex-col justify-between p-6 sm:p-10 bg-gradient-to-b from-black/75 via-black/35 to-black/85 transition-opacity duration-500">
+    <!-- Top Broadcast Watermark & Skip Button -->
+    <div class="flex items-center justify-between">
+      <div class="skew-2k gloss-panel px-4 py-1.5 rounded-sm border-l-4 border-l-red-500 flex items-center gap-3">
+        <span class="unskew-2k font-teko text-xl font-bold tracking-widest text-red-400">2K SPORTS BROADCAST</span>
+        <span class="unskew-2k w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+      </div>
+      <button id="skipIntroBtn" class="skew-2k gloss-panel px-5 py-2 rounded-sm text-xs sm:text-sm font-bold tracking-widest text-neutral-200 hover:text-amber-300 hover:border-amber-400 cursor-pointer transition">
+        <span class="unskew-2k block">SKIP INTRO &raquo;</span>
+      </button>
+    </div>
+
+    <!-- Center Kinetic Broadcast Typography Stage -->
+    <div id="introStageContent" class="my-auto flex flex-col items-center text-center pointer-events-none px-4">
+      <div id="introKicker" class="skew-2k bg-red-600/90 border border-red-300/60 px-4 py-1 mb-3 shadow-lg">
+        <span class="unskew-2k block text-xs sm:text-sm font-bold tracking-[0.35em] text-white uppercase">2K SPORTS PRESENTS</span>
+      </div>
+      <h1 id="introHeadline" class="intro-slam font-teko text-6xl sm:text-8xl md:text-9xl font-bold tracking-wider text-white uppercase leading-none drop-shadow-[0_8px_28px_rgba(0,0,0,0.95)]">
+        NBA 2K14 BLACKTOP
+      </h1>
+      <div id="introSubline" class="skew-2k mt-3 px-6 py-1.5 bg-black/80 border border-amber-400/70 shadow-2xl">
+        <span class="unskew-2k block font-teko text-2xl sm:text-4xl font-bold tracking-[0.22em] text-amber-400 uppercase">
+          RAGDOLL EDITION • ROOFTOP CAGE
+        </span>
+      </div>
+      <div id="introAudioPrompt" class="mt-6 skew-2k px-4 py-1 bg-white/10 border border-white/25 text-[11px] font-inter tracking-widest text-neutral-200 uppercase animate-pulse">
+        <span class="unskew-2k block">CLICK ANYWHERE FOR ARENA AUDIO OR PRESS SKIP</span>
+      </div>
+    </div>
+
+    <!-- Bottom Intro Progress Bar -->
+    <div class="w-full max-w-2xl mx-auto">
+      <div class="flex justify-between text-[11px] font-bold tracking-widest text-neutral-300 mb-1.5 uppercase">
+        <span id="introPhaseLabel">INITIALIZING ROOFTOP CAM...</span>
+        <span>2K14 ENGINE</span>
+      </div>
+      <div class="w-full h-1.5 bg-white/15 rounded-full overflow-hidden">
+        <div id="introProgressBar" class="h-full bg-gradient-to-r from-red-600 via-amber-400 to-red-500 transition-all duration-75" style="width: 0%;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AWESOME NBA 2K14 BROADCAST MAIN MENU OVERLAY -->
+  <div id="overlayModal" class="hidden fixed inset-0 z-30 flex flex-col justify-between bg-gradient-to-r from-black/85 via-black/50 to-transparent pointer-events-auto overflow-y-auto">
+    
+    <!-- Top Header Bar -->
+    <div class="w-full px-5 sm:px-10 pt-5 sm:pt-7 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="skew-2k red-accent-bar px-4 py-2 rounded-sm border border-white/30 shadow-[0_0_25px_rgba(220,38,38,0.65)]">
+          <span class="unskew-2k block font-teko text-3xl sm:text-4xl font-bold leading-none tracking-wider text-white">2K14</span>
+        </div>
+        <div>
+          <div class="text-[11px] font-bold tracking-[0.3em] text-amber-400 uppercase">ROOFTOP STREETBALL EDITION</div>
+          <h1 class="font-teko text-4xl sm:text-6xl font-bold tracking-wider text-white leading-none drop-shadow">BLACKTOP RAGDOLL</h1>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2.5">
+        <button id="replayIntroBtn" class="skew-2k gloss-panel px-4 py-2 rounded-sm text-xs font-bold tracking-widest text-amber-300 hover:text-white hover:border-amber-400 cursor-pointer transition">
+          <span class="unskew-2k block">&#9654; REPLAY INTRO</span>
+        </button>
+        <button id="menuMusicBtn" class="skew-2k gloss-panel px-4 py-2 rounded-sm text-xs font-bold tracking-widest text-amber-300 hover:text-white hover:border-amber-400 cursor-pointer transition">
+          <span class="unskew-2k block" id="menuMusicLabel">MUSIC: ON</span>
+        </button>
+        <button id="menuMuteBtn" class="skew-2k gloss-panel px-4 py-2 rounded-sm text-xs font-bold tracking-widest text-neutral-200 hover:text-white hover:border-white/40 cursor-pointer transition">
+          <span class="unskew-2k block" id="menuMuteLabel">SFX: ON</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Center Main Menu Grid: Left Navigation Stack + Right Dynamic Feature Panel -->
+    <div class="w-full max-w-7xl mx-auto px-5 sm:px-10 my-auto py-4 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+      
+      <!-- Left Column: Skewed 2K14 Menu Cards -->
+      <div class="lg:col-span-5 flex flex-col gap-3">
+        
+        <!-- Primary Action: PLAY BLACKTOP -->
+        <button id="startBtn" style="animation-delay: 0.05s;" class="menu-card-enter menu-tile btn-2k shine-sweep skew-2k w-full text-left px-6 py-4 rounded-md border-2 border-red-300 shadow-2xl cursor-pointer group">
+          <div class="unskew-2k flex items-center justify-between">
+            <div>
+              <div class="text-[11px] font-bold tracking-[0.25em] text-red-100 uppercase">1V1 STREETBALL • FIRST TO 11</div>
+              <div id="startBtnText" class="font-teko text-4xl sm:text-5xl font-bold tracking-wider text-white leading-none mt-0.5">CHECK BALL — PLAY</div>
+            </div>
+            <span class="font-teko text-4xl text-amber-300 group-hover:translate-x-1.5 transition-transform">&#9654;</span>
+          </div>
+        </button>
+
+        <!-- Difficulty Card -->
+        <div style="animation-delay: 0.14s;" class="menu-card-enter skew-2k gloss-panel p-4 rounded-md border border-white/15">
+          <div class="unskew-2k">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold tracking-[0.2em] text-amber-400 uppercase">CPU AI DIFFICULTY</span>
+              <span id="diffRatingBadge" class="px-2 py-0.5 text-[10px] font-bold bg-amber-500/20 border border-amber-400/50 text-amber-300 rounded-xs">92 OVR</span>
+            </div>
+            <div id="difficultySelector" class="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+              <button type="button" data-diff="ROOKIE" class="diff-btn py-2 px-1.5 rounded-xs border border-white/15 bg-neutral-900/90 text-[11px] font-bold tracking-wider text-neutral-300 hover:border-white/40 cursor-pointer transition">ROOKIE</button>
+              <button type="button" data-diff="PRO" class="diff-btn py-2 px-1.5 rounded-xs border border-white/15 bg-neutral-900/90 text-[11px] font-bold tracking-wider text-neutral-300 hover:border-white/40 cursor-pointer transition">PRO</button>
+              <button type="button" data-diff="ALL-STAR" class="diff-btn py-2 px-1.5 rounded-xs border-2 border-amber-400 bg-amber-500/20 text-[11px] font-bold tracking-wider text-amber-300 cursor-pointer transition">ALL-STAR</button>
+              <button type="button" data-diff="HALL OF FAME" class="diff-btn py-2 px-1.5 rounded-xs border border-white/15 bg-neutral-900/90 text-[11px] font-bold tracking-wider text-neutral-300 hover:border-white/40 cursor-pointer transition">HOF</button>
+            </div>
+            <p id="diffDescText" class="font-inter text-xs text-neutral-300 mt-2">Balanced streetball IQ, tight contests, blocks &amp; crossovers</p>
+            <!-- Animated CPU Stat Bars -->
+            <div class="grid grid-cols-3 gap-2 mt-2.5 pt-2.5 border-t border-white/10 text-[10px] font-bold tracking-wider">
+              <div>
+                <div class="flex justify-between text-neutral-400"><span>SPEED</span><span id="statSpeedVal" class="text-white">85</span></div>
+                <div class="w-full h-1.5 bg-neutral-800 rounded-full mt-1 overflow-hidden"><div id="statSpeedBar" class="h-full bg-sky-400 transition-all duration-300" style="width: 85%;"></div></div>
+              </div>
+              <div>
+                <div class="flex justify-between text-neutral-400"><span>DEFENSE</span><span id="statDefVal" class="text-white">88</span></div>
+                <div class="w-full h-1.5 bg-neutral-800 rounded-full mt-1 overflow-hidden"><div id="statDefBar" class="h-full bg-amber-400 transition-all duration-300" style="width: 88%;"></div></div>
+              </div>
+              <div>
+                <div class="flex justify-between text-neutral-400"><span>SHOOTING</span><span id="statShotVal" class="text-white">84</span></div>
+                <div class="w-full h-1.5 bg-neutral-800 rounded-full mt-1 overflow-hidden"><div id="statShotBar" class="h-full bg-red-500 transition-all duration-300" style="width: 84%;"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab Switcher: Moveset vs Match Summary -->
+        <div style="animation-delay: 0.22s;" class="menu-card-enter flex gap-2">
+          <button type="button" id="tabMovesBtn" class="skew-2k flex-1 py-2.5 px-4 rounded-sm border-2 border-amber-400 bg-amber-500/20 text-xs font-bold tracking-widest text-amber-300 cursor-pointer transition">
+            <span class="unskew-2k block">SIGNATURE MOVESET</span>
+          </button>
+          <button type="button" id="tabTipsBtn" class="skew-2k flex-1 py-2.5 px-4 rounded-sm border border-white/15 gloss-panel text-xs font-bold tracking-widest text-neutral-300 hover:text-white cursor-pointer transition">
+            <span class="unskew-2k block">BLACKTOP RULES</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Right Column: Showcase Panel (Match Result Banner + Interactive Moveset / Rules) -->
+      <div style="animation-delay: 0.25s;" class="menu-card-enter lg:col-span-7 skew-2k gloss-panel rounded-lg p-5 sm:p-6 border border-white/20 shadow-2xl">
+        <div class="unskew-2k space-y-4">
+          <div class="flex items-center justify-between border-b border-white/15 pb-3">
+            <div>
+              <div class="text-[11px] font-bold tracking-[0.25em] text-red-400 uppercase">BLACKTOP SHOWCASE</div>
+              <h2 id="modalTitle" class="font-teko text-3xl sm:text-4xl font-bold tracking-wider text-white leading-none mt-0.5">SIGNATURE ARSENAL &amp; RAGDOLL PHYSICS</h2>
+            </div>
+            <div class="px-3 py-1 bg-red-600/25 border border-red-400/50 rounded-xs text-xs font-bold tracking-widest text-red-200">
+              LIVE COURT PREVIEW
+            </div>
+          </div>
+
+          <p id="modalDesc" class="font-inter text-xs sm:text-sm text-neutral-300 leading-relaxed">
+            Dominate the rooftop cage in <span class="text-white font-semibold">NBA 2K14 Blacktop</span> style. Snap ankles, trigger <span class="text-emerald-400 font-semibold">Green Releases</span>, unlock the <span class="text-fuchsia-300 font-semibold">Rainbow Flick Ult</span> on a 3-bucket streak, or unleash physics-driven martial arts takedowns.
+          </p>
+
+          <!-- Panel 1: Signature Moveset Grid -->
+          <div id="panelMoveset" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs font-inter">
+            <div class="bg-black/55 border border-white/10 hover:border-amber-400/50 rounded-md p-3 flex items-start gap-2.5 transition">
+              <span class="px-2 py-1 bg-amber-500/20 border border-amber-400/50 text-amber-300 font-bold rounded-xs shrink-0">J / L</span>
+              <div>
+                <div class="font-bold text-white">Crossover (J) &amp; Spin Move (L)</div>
+                <div class="text-neutral-400 mt-0.5"><span class="text-amber-300 font-semibold">J</span> drops defenders into ragdolls; <span class="text-orange-300 font-semibold">L</span> spins 360° past clamps.</div>
+              </div>
+            </div>
+
+            <div class="bg-black/55 border border-white/10 hover:border-emerald-400/50 rounded-md p-3 flex items-start gap-2.5 transition">
+              <span class="px-2 py-1 bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 font-bold rounded-xs shrink-0">SPACE</span>
+              <div>
+                <div class="font-bold text-white">2K Shot Meter / Jump Block</div>
+                <div class="text-neutral-400 mt-0.5">Hold on offense for Green Releases &amp; Eastbay dunks; press on defense to swat shots.</div>
+              </div>
+            </div>
+
+            <div class="bg-black/55 border border-white/10 hover:border-fuchsia-400/50 rounded-md p-3 flex items-start gap-2.5 transition">
+              <span class="px-2 py-1 bg-fuchsia-500/20 border border-fuchsia-400/50 text-fuchsia-300 font-bold rounded-xs shrink-0">R (3 STREAK)</span>
+              <div>
+                <div class="font-bold text-white">Rainbow Flick Ultimate</div>
+                <div class="text-neutral-400 mt-0.5">Score 3 buckets in a row, then flick the ball off your heels over your head into the hoop!</div>
+              </div>
+            </div>
+
+            <div class="bg-black/55 border border-white/10 hover:border-red-400/50 rounded-md p-3 flex items-start gap-2.5 transition">
+              <span class="px-2 py-1 bg-red-500/20 border border-red-400/50 text-red-300 font-bold rounded-xs shrink-0">Q / M / K</span>
+              <div>
+                <div class="font-bold text-white">Kick (Q), Seoi Nage (M) &amp; Steal (K)</div>
+                <div class="text-neutral-400 mt-0.5"><span class="text-red-300 font-semibold">Q</span> kicks; <span class="text-indigo-300 font-semibold">M</span> slams ball-handlers on defense (15s CD); <span class="text-sky-300 font-semibold">K</span> steals.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panel 2: Blacktop Rules (Hidden until toggled) -->
+          <div id="panelRules" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs font-inter">
+            <div class="bg-black/55 border border-white/10 rounded-md p-3">
+              <div class="font-bold text-amber-300 uppercase tracking-wider">1s &amp; 2s SCORING (GAME TO 11)</div>
+              <div class="text-neutral-300 mt-1">Buckets inside the yellow arc count as <span class="text-white font-bold">1 PT</span>. Deep shots beyond the arc count as <span class="text-amber-300 font-bold">2 PTS</span>.</div>
+            </div>
+            <div class="bg-black/55 border border-white/10 rounded-md p-3">
+              <div class="font-bold text-emerald-300 uppercase tracking-wider">MAKE IT, TAKE IT</div>
+              <div class="text-neutral-300 mt-1">Score a bucket and keep possession at the top of the key. Chain 3 buckets in a row to ignite your <span class="text-fuchsia-300 font-bold">Rainbow Flick Ult</span>.</div>
+            </div>
+            <div class="bg-black/55 border border-white/10 rounded-md p-3">
+              <div class="font-bold text-indigo-300 uppercase tracking-wider">DEFENSIVE SEOI NAGE (M)</div>
+              <div class="text-neutral-300 mt-1">Available exclusively on defense with a 15-second cooldown. Grab close ball-handlers for an over-the-shoulder judo slam!</div>
+            </div>
+            <div class="bg-black/55 border border-white/10 rounded-md p-3">
+              <div class="font-bold text-red-300 uppercase tracking-wider">VERLET RAGDOLL CHAOS</div>
+              <div class="text-neutral-300 mt-1">Ankle breakers, poster dunks, shot rejections, and Spin Hook Kicks send players tumbling dynamically across the asphalt.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom NBA 2K14 Broadcast News Ticker -->
+    <div class="w-full bg-black/90 border-t border-white/15 py-2 overflow-hidden flex items-center">
+      <div class="skew-2k red-accent-bar px-4 py-0.5 ml-3 mr-4 shrink-0 z-10 shadow">
+        <span class="unskew-2k block text-[11px] font-bold tracking-widest text-white uppercase">2K TICKER</span>
+      </div>
+      <div class="overflow-hidden flex-1">
+        <div class="ticker-track text-xs font-bold tracking-widest text-neutral-300 uppercase gap-10">
+          <span>&#9733; WELCOME TO NBA 2K14 BLACKTOP: RAGDOLL EDITION</span>
+          <span class="text-amber-400">&#9670; MAKE IT TAKE IT • FIRST TO 11 WINS</span>
+          <span class="text-fuchsia-400">&#9733; SCORE 3 BUCKETS IN A ROW TO UNLOCK THE RAINBOW HEEL FLICK ULTIMATE [R]</span>
+          <span class="text-indigo-300">&#9670; USE SEOI NAGE [M] ON DEFENSE TO SLAM BALL-HANDLERS</span>
+          <span class="text-emerald-400">&#9733; DRIVE INTO THE PAINT WITH TURBO AND HOLD SPACE FOR AN EASTBAY BETWEEN-THE-LEGS DUNK</span>
+          <span>&#9733; WELCOME TO NBA 2K14 BLACKTOP: RAGDOLL EDITION</span>
+          <span class="text-amber-400">&#9670; MAKE IT TAKE IT • FIRST TO 11 WINS</span>
+          <span class="text-fuchsia-400">&#9733; SCORE 3 BUCKETS IN A ROW TO UNLOCK THE RAINBOW HEEL FLICK ULTIMATE [R]</span>
+          <span class="text-indigo-300">&#9670; USE SEOI NAGE [M] ON DEFENSE TO SLAM BALL-HANDLERS</span>
+          <span class="text-emerald-400">&#9733; DRIVE INTO THE PAINT WITH TURBO AND HOLD SPACE FOR AN EASTBAY BETWEEN-THE-LEGS DUNK</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * NBA 2K14 BLACKTOP - RAGDOLL EDITION
+     * Single-file 2.5D Perspective Canvas + Verlet Articulated Ragdoll Engine + Procedural Web Audio SFX
+     * Features:
+     *  - Cinematic NBA 2K14 Broadcast Intro + Live AI Rooftop Demo + Animated Main Menu
+     *  - 45-degree upward Y-axis broadcast perspective projection
+     *  - Ankle-breaker crossovers that collapse defenders into Verlet ragdolls
+     *  - Reach-in Steal mechanic (K) & Spin Move (L)
+     *  - Jump Block mechanic (Space without the ball) for both Player & AI
+     *  - Authentic NBA 2K curved shot timing meter with dynamic Green Release window + driving dunks
+     *  - Rainbow Flick Ultimate (R) after scoring 3 buckets in a row (soccer back-heel rainbow flick arc into hoop)
+     *  - 4 AI Difficulty levels: ROOKIE, PRO, ALL-STAR, HALL OF FAME
+     *  - Q-button 360 Spin Hook Kick & M-button Defensive Seoi Nage slam
+     */
+
+    // =========================================================================
+    // 1. PROCEDURAL SOUND & HIP-HOP MUSIC ENGINE (Web Audio API - Zero External URLs)
+    // =========================================================================
+    class SoundFX {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+        this.musicMuted = false;
+        this.musicMode = 'none'; // 'none' | 'intro' | 'hiphop'
+        this.musicTimer = null;
+        this.musicStep = 0;
+        this.noiseBuffer = null;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) {
+            this.ctx = new AudioCtx();
+            // Prebuild reusable white noise buffer for crisp snares and hi-hats
+            const len = Math.floor(this.ctx.sampleRate * 0.5);
+            this.noiseBuffer = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+            const data = this.noiseBuffer.getChannelData(0);
+            for (let i = 0; i < len; i++) {
+              data[i] = Math.random() * 2 - 1;
+            }
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+        if (this.musicMode !== 'none' && !this.musicMuted && !this.musicTimer && this.ctx) {
+          this._startSequencer();
+        }
+      }
+
+      toggleMute() {
+        this.muted = !this.muted;
+        return this.muted;
+      }
+
+      toggleMusic() {
+        this.musicMuted = !this.musicMuted;
+        if (this.musicMuted) {
+          this.stopMusic(false);
+        } else if (this.musicMode !== 'none') {
+          this.init();
+          this._startSequencer();
+        }
+        return this.musicMuted;
+      }
+
+      setMusicMode(mode) {
+        if (this.musicMode === mode && this.musicTimer) return;
+        this.musicMode = mode;
+        this.musicStep = 0;
+        this.stopMusic(false);
+        if (mode !== 'none' && !this.musicMuted && this.ctx) {
+          this._startSequencer();
+        }
+      }
+
+      stopMusic(resetMode = true) {
+        if (this.musicTimer) {
+          clearInterval(this.musicTimer);
+          this.musicTimer = null;
+        }
+        if (resetMode) {
+          this.musicMode = 'none';
+        }
+      }
+
+      _startSequencer() {
+        if (this.musicTimer || this.musicMuted || !this.ctx || this.musicMode === 'none') return;
+        // 16th-note step interval: 94 BPM classic boom-bap hip hop (159ms), 118 BPM dramatic intro (127ms)
+        const stepMs = this.musicMode === 'intro' ? 127 : 159;
+        this.musicTimer = setInterval(() => {
+          if (this.musicMuted || !this.ctx || this.ctx.state !== 'running') return;
+          if (this.musicMode === 'intro') {
+            this._playIntroStep(this.musicStep);
+          } else if (this.musicMode === 'hiphop') {
+            this._playHipHopStep(this.musicStep);
+          }
+          this.musicStep = (this.musicStep + 1) % 32;
+        }, stepMs);
+      }
+
+      _playKickDrum(time, punchFreq = 135, subFreq = 44, vol = 0.28, dur = 0.26) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(punchFreq, time);
+        osc.frequency.exponentialRampToValueAtTime(subFreq, time + dur * 0.7);
+        gain.gain.setValueAtTime(vol, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(time);
+        osc.stop(time + dur + 0.01);
+      }
+
+      _playSnareDrum(time, vol = 0.16, toneFreq = 185) {
+        if (this.noiseBuffer) {
+          const noise = this.ctx.createBufferSource();
+          noise.buffer = this.noiseBuffer;
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = 'highpass';
+          filter.frequency.setValueAtTime(950, time);
+          const nGain = this.ctx.createGain();
+          nGain.gain.setValueAtTime(vol, time);
+          nGain.gain.exponentialRampToValueAtTime(0.001, time + 0.17);
+          noise.connect(filter);
+          filter.connect(nGain);
+          nGain.connect(this.ctx.destination);
+          noise.start(time);
+          noise.stop(time + 0.18);
+        }
+        const osc = this.ctx.createOscillator();
+        const oGain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(toneFreq, time);
+        osc.frequency.exponentialRampToValueAtTime(85, time + 0.11);
+        oGain.gain.setValueAtTime(vol * 0.85, time);
+        oGain.gain.exponentialRampToValueAtTime(0.001, time + 0.12);
+        osc.connect(oGain);
+        oGain.connect(this.ctx.destination);
+        osc.start(time);
+        osc.stop(time + 0.13);
+      }
+
+      _playHiHat(time, open = false, vol = 0.055) {
+        if (!this.noiseBuffer) return;
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = this.noiseBuffer;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.setValueAtTime(6800, time);
+        const gain = this.ctx.createGain();
+        const dur = open ? 0.19 : 0.045;
+        gain.gain.setValueAtTime(vol, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        noise.start(time);
+        noise.stop(time + dur + 0.01);
+      }
+
+      _playSynthNote(freq, time, dur, type = 'sawtooth', vol = 0.08, cutoff = 1100) {
+        const osc = this.ctx.createOscillator();
+        const filter = this.ctx.createBiquadFilter();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, time);
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(cutoff, time);
+        filter.frequency.exponentialRampToValueAtTime(Math.max(220, cutoff * 0.45), time + dur);
+        gain.gain.setValueAtTime(0.001, time);
+        gain.gain.linearRampToValueAtTime(vol, time + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(time);
+        osc.stop(time + dur + 0.02);
+      }
+
+      // Dramatic NBA 2K14 Broadcast Intro Anthem (D Minor Stadium Brass + Epic Timpani/808s)
+      _playIntroStep(step) {
+        const now = this.ctx.currentTime;
+        const barStep = step % 16;
+
+        // Epic broadcast percussion
+        if (barStep === 0 || barStep === 6 || barStep === 8 || barStep === 14) {
+          this._playKickDrum(now, 150, 38, 0.26, 0.34);
+        }
+        if (barStep === 4 || barStep === 12) {
+          this._playSnareDrum(now, 0.15, 165);
+        }
+        if (barStep % 2 === 0) {
+          this._playHiHat(now, barStep === 14, 0.045);
+        }
+
+        // Stadium brass / synth chords & heroic lead riff in D Minor
+        if (step === 0) {
+          [73.42, 146.83, 220.0, 293.66, 349.23].forEach((f) => this._playSynthNote(f, now, 0.85, 'sawtooth', 0.055, 1450));
+        } else if (step === 6) {
+          [87.31, 174.61, 261.63, 349.23].forEach((f) => this._playSynthNote(f, now, 0.42, 'sawtooth', 0.05, 1350));
+        } else if (step === 8) {
+          [65.41, 130.81, 196.0, 261.63, 329.63].forEach((f) => this._playSynthNote(f, now, 0.85, 'sawtooth', 0.055, 1450));
+        } else if (step === 16) {
+          [58.27, 116.54, 174.61, 233.08, 293.66].forEach((f) => this._playSynthNote(f, now, 0.85, 'sawtooth', 0.055, 1500));
+        } else if (step === 24) {
+          [65.41, 130.81, 196.0, 261.63, 349.23].forEach((f) => this._playSynthNote(f, now, 0.48, 'sawtooth', 0.055, 1550));
+        } else if (step === 28) {
+          [73.42, 146.83, 220.0, 277.18, 329.63].forEach((f) => this._playSynthNote(f, now, 0.48, 'sawtooth', 0.06, 1700));
+        }
+
+        // High stadium synth lead melody
+        const introLead = {
+          0: 587.33, 3: 659.25, 4: 698.46, 6: 880.0,
+          8: 783.99, 11: 698.46, 12: 659.25, 14: 587.33,
+          16: 698.46, 19: 783.99, 20: 880.0, 22: 1046.5,
+          24: 987.77, 26: 880.0, 28: 783.99, 30: 880.0
+        };
+        if (introLead[step]) {
+          this._playSynthNote(introLead[step], now, 0.24, 'triangle', 0.075, 2400);
+        }
+      }
+
+      // Streetball Boom-Bap / Trap-Soul Hip-Hop Beat (94 BPM in C Minor)
+      _playHipHopStep(step) {
+        const now = this.ctx.currentTime;
+        const barStep = step % 16;
+
+        // Punchy 808 / Boom-Bap Kick pattern
+        if (barStep === 0 || barStep === 3 || barStep === 7 || barStep === 10 || (step >= 16 && barStep === 14)) {
+          this._playKickDrum(now, 125, 42, 0.24, 0.26);
+        }
+
+        // Crisp Streetball Snare on beats 2 & 4 (steps 4 & 12)
+        if (barStep === 4 || barStep === 12) {
+          this._playSnareDrum(now, 0.14, 195);
+        }
+
+        // Swung 16th Hi-Hats with occasional trap triplet roll
+        if (barStep % 2 === 0 || barStep === 11 || barStep === 15) {
+          const isOpen = barStep === 6 || barStep === 14;
+          const hatVol = (barStep % 2 === 0) ? 0.05 : 0.032;
+          this._playHiHat(now, isOpen, hatVol);
+        }
+
+        // Deep Sub-808 Bassline (C Minor -> Ab Major -> F Minor -> G7)
+        const bassMap = {
+          0: 65.41, 3: 65.41, 7: 77.78, 10: 65.41,
+          16: 51.91, 19: 51.91, 23: 58.27, 26: 43.65, 30: 49.00
+        };
+        if (bassMap[step]) {
+          this._playSynthNote(bassMap[step], now, 0.42, 'sine', 0.22, 320);
+        }
+
+        // Rhodes / Electric Piano Streetball Chords
+        if (step === 0) {
+          [261.63, 311.13, 392.00, 466.16].forEach((f) => this._playSynthNote(f, now, 0.95, 'triangle', 0.045, 1150));
+        } else if (step === 8) {
+          [233.08, 293.66, 349.23, 415.30].forEach((f) => this._playSynthNote(f, now, 0.95, 'triangle', 0.045, 1150));
+        } else if (step === 16) {
+          [207.65, 261.63, 311.13, 392.00].forEach((f) => this._playSynthNote(f, now, 0.95, 'triangle', 0.045, 1150));
+        } else if (step === 24) {
+          [174.61, 220.00, 261.63, 311.13].forEach((f) => this._playSynthNote(f, now, 0.55, 'triangle', 0.045, 1150));
+        } else if (step === 28) {
+          [196.00, 246.94, 293.66, 349.23].forEach((f) => this._playSynthNote(f, now, 0.55, 'triangle', 0.048, 1250));
+        }
+
+        // Smooth West-Coast / Streetball Synth Pluck Accent
+        const pluckLead = {
+          2: 523.25, 6: 622.25, 10: 587.33, 14: 466.16,
+          18: 523.25, 22: 698.46, 26: 622.25, 30: 587.33
+        };
+        if (pluckLead[step]) {
+          this._playSynthNote(pluckLead[step], now, 0.22, 'sine', 0.042, 1800);
+        }
+      }
+
+      playBounce(intensity = 1) {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        const baseFreq = 115 + Math.random() * 25;
+        osc.frequency.setValueAtTime(baseFreq * Math.min(1.4, 0.8 + intensity * 0.4), now);
+        osc.frequency.exponentialRampToValueAtTime(42, now + 0.14);
+
+        gain.gain.setValueAtTime(Math.min(0.4, 0.25 * intensity), now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.16);
+      }
+
+      playSqueak() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(2100 + Math.random() * 400, now);
+        osc.frequency.exponentialRampToValueAtTime(3100, now + 0.06);
+        osc.frequency.exponentialRampToValueAtTime(1750, now + 0.12);
+
+        gain.gain.setValueAtTime(0.09, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.14);
+      }
+
+      playStealSwipe() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(620, now);
+        osc.frequency.exponentialRampToValueAtTime(180, now + 0.11);
+
+        gain.gain.setValueAtTime(0.16, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.13);
+      }
+
+      playAnkleBreaker() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        this.playSqueak();
+        const now = this.ctx.currentTime;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(140, now);
+        osc.frequency.exponentialRampToValueAtTime(34, now + 0.35);
+        gain.gain.setValueAtTime(0.32, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.4);
+
+        [220, 277.18, 329.63].forEach((freq, idx) => {
+          const horn = this.ctx.createOscillator();
+          const hGain = this.ctx.createGain();
+          horn.type = 'sawtooth';
+          horn.frequency.setValueAtTime(freq, now + 0.05);
+          hGain.gain.setValueAtTime(0.07, now + 0.05);
+          hGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45 + idx * 0.04);
+          horn.connect(hGain);
+          hGain.connect(this.ctx.destination);
+          horn.start(now + 0.05);
+          horn.stop(now + 0.5);
+        });
+      }
+
+      playGreenRelease() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const notes = [587.33, 880, 1174.66];
+        notes.forEach((f, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(f, now + i * 0.045);
+          gain.gain.setValueAtTime(0.18, now + i * 0.045);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.045 + 0.32);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + i * 0.045);
+          osc.stop(now + i * 0.045 + 0.34);
+        });
+      }
+
+      playAnimeUltTrigger() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const sweep = this.ctx.createOscillator();
+        const sGain = this.ctx.createGain();
+        sweep.type = 'sawtooth';
+        sweep.frequency.setValueAtTime(280, now);
+        sweep.frequency.exponentialRampToValueAtTime(2400, now + 0.28);
+        sGain.gain.setValueAtTime(0.24, now);
+        sGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        sweep.connect(sGain);
+        sGain.connect(this.ctx.destination);
+        sweep.start(now);
+        sweep.stop(now + 0.36);
+
+        const chord = [440, 554.37, 659.25, 880, 1318.5];
+        chord.forEach((freq, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + 0.1 + i * 0.03);
+          gain.gain.setValueAtTime(0.14, now + 0.1 + i * 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.72);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + 0.1 + i * 0.03);
+          osc.stop(now + 0.75);
+        });
+      }
+
+      playSwish() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const bufferSize = this.ctx.sampleRate * 0.32;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.sin((i / bufferSize) * Math.PI);
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(2400, now);
+        filter.frequency.exponentialRampToValueAtTime(950, now + 0.3);
+        filter.Q.value = 1.6;
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.32, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        noise.start(now);
+      }
+
+      playScoreCelebration(isDunk = false, isTwoPointer = false) {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+
+        const hornNotes = isDunk ? [220, 277.18, 329.63, 440] : (isTwoPointer ? [329.63, 415.30, 493.88, 659.25] : [293.66, 369.99, 440]);
+        hornNotes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = isDunk ? 'sawtooth' : 'triangle';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.04);
+          gain.gain.setValueAtTime(0.11, now + idx * 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.65 + idx * 0.05);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + idx * 0.04);
+          osc.stop(now + 0.72 + idx * 0.05);
+        });
+
+        const cheerDuration = isDunk ? 1.85 : 1.35;
+        const bufferSize = Math.floor(this.ctx.sampleRate * cheerDuration);
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        let b0 = 0, b1 = 0, b2 = 0;
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          b0 = 0.99765 * b0 + white * 0.099046;
+          b1 = 0.96300 * b1 + white * 0.2965164;
+          b2 = 0.57000 * b2 + white * 1.0526913;
+          const env = Math.sin(Math.min(1, i / (bufferSize * 0.14)) * (Math.PI / 2)) *
+                      Math.pow(1 - i / bufferSize, 0.75);
+          data[i] = (b0 + b1 + b2 + white * 0.1848) * 0.22 * env;
+        }
+
+        const crowdSource = this.ctx.createBufferSource();
+        crowdSource.buffer = buffer;
+
+        const crowdFilter = this.ctx.createBiquadFilter();
+        crowdFilter.type = 'bandpass';
+        crowdFilter.frequency.setValueAtTime(750, now);
+        crowdFilter.frequency.linearRampToValueAtTime(1150, now + 0.35);
+        crowdFilter.frequency.exponentialRampToValueAtTime(620, now + cheerDuration);
+        crowdFilter.Q.value = 0.85;
+
+        const crowdGain = this.ctx.createGain();
+        crowdGain.gain.setValueAtTime(isDunk ? 0.45 : 0.32, now);
+        crowdGain.gain.exponentialRampToValueAtTime(0.001, now + cheerDuration);
+
+        crowdSource.connect(crowdFilter);
+        crowdFilter.connect(crowdGain);
+        crowdGain.connect(this.ctx.destination);
+        crowdSource.start(now);
+      }
+
+      playRimClank() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        [310, 465, 720].forEach((freq) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(freq, now);
+          osc.frequency.exponentialRampToValueAtTime(freq * 0.85, now + 0.18);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.21);
+        });
+      }
+
+      playSpinKick() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(480, now);
+        osc.frequency.exponentialRampToValueAtTime(110, now + 0.22);
+        gain.gain.setValueAtTime(0.24, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      }
+
+      playMenuHover() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(520, now);
+        osc.frequency.exponentialRampToValueAtTime(780, now + 0.045);
+        gain.gain.setValueAtTime(0.06, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.055);
+      }
+
+      playMenuSelect() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        [440, 659.25].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.045);
+          gain.gain.setValueAtTime(0.11, now + idx * 0.045);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.045 + 0.16);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + idx * 0.045);
+          osc.stop(now + idx * 0.045 + 0.17);
+        });
+      }
+
+      playIntroSting() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const bass = this.ctx.createOscillator();
+        const bGain = this.ctx.createGain();
+        bass.type = 'sawtooth';
+        bass.frequency.setValueAtTime(110, now);
+        bass.frequency.exponentialRampToValueAtTime(36.71, now + 1.1);
+        bGain.gain.setValueAtTime(0.28, now);
+        bGain.gain.exponentialRampToValueAtTime(0.001, now + 1.25);
+        bass.connect(bGain);
+        bGain.connect(this.ctx.destination);
+        bass.start(now);
+        bass.stop(now + 1.3);
+
+        [146.83, 220.0, 293.66, 369.99, 440.0].forEach((freq, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + 0.08 + i * 0.04);
+          gain.gain.setValueAtTime(0.11, now + 0.08 + i * 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 1.45);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + 0.08 + i * 0.04);
+          osc.stop(now + 1.5);
+        });
+      }
+
+      playKickImpact() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+
+        const sub = this.ctx.createOscillator();
+        const sGain = this.ctx.createGain();
+        sub.type = 'sine';
+        sub.frequency.setValueAtTime(160, now);
+        sub.frequency.exponentialRampToValueAtTime(28, now + 0.42);
+        sGain.gain.setValueAtTime(0.55, now);
+        sGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+        sub.connect(sGain);
+        sGain.connect(this.ctx.destination);
+        sub.start(now);
+        sub.stop(now + 0.46);
+
+        const bufferSize = this.ctx.sampleRate * 0.22;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.3));
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+        const nGain = this.ctx.createGain();
+        nGain.gain.setValueAtTime(0.45, now);
+        nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+        noise.connect(nGain);
+        nGain.connect(this.ctx.destination);
+        noise.start(now);
+      }
+    }
+
+    const sfx = new SoundFX();
+
+    // =========================================================================
+    // 2. WORLD & 45-DEGREE UPWARD Y-AXIS PROJECTION ENGINE
+    // =========================================================================
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let W = window.innerWidth;
+    let H = window.innerHeight;
+
+    function resizeCanvas() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = window.innerWidth;
+      H = window.innerHeight;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    const COURT = {
+      minX: -460,
+      maxX: 460,
+      minZ: 40,
+      maxZ: 680,
+      hoopX: 0,
+      hoopY: 225,
+      hoopZ: 595,
+      rimRadius: 23,
+      backboardZ: 625,
+      twoPointRadius: 340
+    };
+
+    const camera = {
+      shake: 0,
+      zoom: 1,
+      targetZoom: 1,
+      focusX: 0,
+      focusZ: 340,
+      targetFocusX: 0,
+      targetFocusZ: 340,
+      pitch: Math.PI * 0.25
+    };
+
+    function worldToScreen(x, y, z) {
+      const sinP = Math.sin(camera.pitch);
+      const cosP = Math.cos(camera.pitch);
+
+      const camDist = 880;
+      const camPivotZ = camera.focusZ;
+      const relZ = z - camPivotZ;
+
+      const rotZ = relZ * cosP + y * sinP;
+      const depth = camDist + rotZ;
+      const baseScale = Math.min(W / 1080, H / 640) * 1.16 * camera.zoom;
+      const persp = (camDist / Math.max(240, depth)) * baseScale;
+
+      const shakeX = camera.shake > 0 ? (Math.random() - 0.5) * camera.shake : 0;
+      const shakeY = camera.shake > 0 ? (Math.random() - 0.5) * camera.shake : 0;
+
+      const centerX = W * 0.5 - (camera.focusX * 0.45 * persp);
+      const centerY = H * 0.54;
+
+      const sx = centerX + x * persp + shakeX;
+      const sy = centerY - (relZ * sinP * 0.88 + y * cosP * 1.12) * persp + shakeY;
+
+      return { x: sx, y: sy, scale: persp, depth };
+    }
+
+    // =========================================================================
+    // 3. AI DIFFICULTY CONFIGURATIONS
+    // =========================================================================
+    const AI_LEVELS = {
+      'ROOKIE': {
+        label: 'ROOKIE',
+        ovr: '78 OVR',
+        statSpeed: 74,
+        statDef: 72,
+        statShot: 75,
+        desc: 'Relaxed defense, slower speed, forgiving shot contest',
+        speedMult: 0.74,
+        guardDistance: 86,
+        stealChancePerFrame: 0.0025,
+        blockChance: 0.25,
+        shotGreenWidth: 0.055,
+        shotHitChance: 0.42,
+        ankleVulnerability: 1.18
+      },
+      'PRO': {
+        label: 'PRO',
+        ovr: '85 OVR',
+        statSpeed: 82,
+        statDef: 81,
+        statShot: 80,
+        desc: 'Solid on-ball pressure, contest blocks & perimeter shooting',
+        speedMult: 0.88,
+        guardDistance: 72,
+        stealChancePerFrame: 0.006,
+        blockChance: 0.48,
+        shotGreenWidth: 0.085,
+        shotHitChance: 0.58,
+        ankleVulnerability: 1.02
+      },
+      'ALL-STAR': {
+        label: 'ALL-STAR',
+        ovr: '92 OVR',
+        statSpeed: 88,
+        statDef: 90,
+        statShot: 87,
+        desc: 'Balanced streetball IQ, tight contests, blocks & crossovers',
+        speedMult: 1.0,
+        guardDistance: 62,
+        stealChancePerFrame: 0.011,
+        blockChance: 0.72,
+        shotGreenWidth: 0.115,
+        shotHitChance: 0.72,
+        ankleVulnerability: 0.9
+      },
+      'HALL OF FAME': {
+        label: 'HALL OF FAME',
+        ovr: '99 OVR',
+        statSpeed: 98,
+        statDef: 99,
+        statShot: 96,
+        desc: 'Relentless lockdown clamp, swat blocks, handles & deadly range',
+        speedMult: 1.16,
+        guardDistance: 50,
+        stealChancePerFrame: 0.022,
+        blockChance: 0.92,
+        shotGreenWidth: 0.155,
+        shotHitChance: 0.88,
+        ankleVulnerability: 0.68
+      }
+    };
+
+    let selectedDifficulty = 'ALL-STAR';
+
+    // =========================================================================
+    // 4. ARTICULATED VERLET RAGDOLL PLAYER CLASS
+    // =========================================================================
+    class RagdollPlayer {
+      constructor(opts) {
+        this.id = opts.id;
+        this.name = opts.name;
+        this.number = opts.number;
+        this.isPlayer = opts.isPlayer;
+        this.jerseyColor = opts.jerseyColor;
+        this.jerseyTrim = opts.jerseyTrim;
+        this.shortsColor = opts.shortsColor;
+        this.skinColor = opts.skinColor;
+        this.shoeColor = opts.shoeColor;
+        this.headbandColor = opts.headbandColor;
+
+        this.x = opts.x;
+        this.y = 0;
+        this.z = opts.z;
+        this.vx = 0;
+        this.vy = 0;
+        this.vz = 0;
+        this.facing = 1;
+
+        this.stamina = 100;
+        this.hype = 25;
+
+        this.state = 'active';
+        this.ragdollTimer = 0;
+        this.ragdollReason = '';
+
+        this.dribblePhase = 0;
+        this.dribbleHand = 1;
+        this.crossoverTimer = 0;
+        this.crossoverCooldown = 0;
+        this.crossoverDir = 1;
+        this.spinMoveTimer = 0;
+        this.spinMoveCooldown = 0;
+        this.spinMoveDir = 1;
+        this.stealTimer = 0;
+        this.stealCooldown = 0;
+        this.blockTimer = 0;
+        this.blockCooldown = 0;
+        this.kickTimer = 0;
+        this.kickCooldown = 0;
+        this.kickHitDone = false;
+        this.throwTimer = 0;
+        this.throwCooldown = 15.0;
+        this.rainbowFlickTimer = 0;
+        this.isJumping = false;
+        this.jumpTimer = 0;
+        this.isDunking = false;
+        this.dunkAnimTimer = 0;
+        this.dunkType = 'TOMAHAWK';
+        this.dunkTargetX = 0;
+        this.dunkTargetZ = 0;
+
+        this.nodes = [];
+        this.sticks = [];
+        this.buildSkeleton();
+      }
+
+      buildSkeleton() {
+        const x = this.x;
+        const y = this.y;
+        const z = this.z;
+
+        this.nodes = [
+          { name: 'head',      x: x,      y: y + 126, z: z, ox: x,      oy: y + 126, oz: z, r: 12 },
+          { name: 'neck',      x: x,      y: y + 110, z: z, ox: x,      oy: y + 110, oz: z, r: 6 },
+          { name: 'pelvis',    x: x,      y: y + 66,  z: z, ox: x,      oy: y + 66,  oz: z, r: 9 },
+          { name: 'lShoulder', x: x - 14, y: y + 106, z: z, ox: x - 14, oy: y + 106, oz: z, r: 6 },
+          { name: 'rShoulder', x: x + 14, y: y + 106, z: z, ox: x + 14, oy: y + 106, oz: z, r: 6 },
+          { name: 'lHand',     x: x - 20, y: y + 72,  z: z, ox: x - 20, oy: y + 72,  oz: z, r: 6 },
+          { name: 'rHand',     x: x + 20, y: y + 72,  z: z, ox: x + 20, oy: y + 72,  oz: z, r: 6 },
+          { name: 'lKnee',     x: x - 10, y: y + 34,  z: z, ox: x - 10, oy: y + 34,  oz: z, r: 6 },
+          { name: 'rKnee',     x: x + 10, y: y + 34,  z: z, ox: x + 10, oy: y + 34,  oz: z, r: 6 },
+          { name: 'lFoot',     x: x - 12, y: y + 4,   z: z, ox: x - 12, oy: y + 4,   oz: z, r: 7 },
+          { name: 'rFoot',     x: x + 12, y: y + 4,   z: z, ox: x + 12, oy: y + 4,   oz: z, r: 7 }
+        ];
+
+        this.sticks = [
+          [0, 1, 16],
+          [1, 2, 44],
+          [1, 3, 15],
+          [1, 4, 15],
+          [3, 4, 28],
+          [3, 5, 36],
+          [4, 6, 36],
+          [2, 7, 34],
+          [2, 8, 34],
+          [7, 9, 32],
+          [8, 10, 32],
+          [7, 8, 22]
+        ];
+      }
+
+      syncSkeletonToPose(dt, hasBall, isChargingShot, shotMeterValue) {
+        const speed = Math.hypot(this.vx, this.vz);
+        const runCycle = performance.now() * 0.014;
+        const stride = Math.min(1, speed / 210) * Math.sin(runCycle);
+        const bounce = this.isJumping ? 0 : Math.abs(Math.sin(runCycle)) * Math.min(1, speed / 220) * 6;
+
+        const baseX = this.x;
+        const baseY = this.y + bounce;
+        const baseZ = this.z;
+
+        let spinAngle = 0;
+        let kickExtend = 0;
+        if (this.kickTimer > 0) {
+          const progress = 1 - (this.kickTimer / 0.48);
+          spinAngle = progress * Math.PI * 2.2 * this.facing;
+          kickExtend = Math.sin(progress * Math.PI) * 58;
+        }
+
+        let dribbleSpinAngle = 0;
+        if (this.spinMoveTimer > 0) {
+          const sp = 1 - (this.spinMoveTimer / 0.42);
+          dribbleSpinAngle = sp * Math.PI * 2 * this.spinMoveDir;
+        }
+
+        let throwBend = 0;
+        if (this.throwTimer > 0) {
+          const tp = 1 - (this.throwTimer / 0.58);
+          throwBend = Math.sin(tp * Math.PI);
+        }
+
+        let rainbowFlipPitch = 0;
+        let rainbowHeelKick = 0;
+        if (this.rainbowFlickTimer > 0) {
+          const rp = 1 - (this.rainbowFlickTimer / 0.65);
+          rainbowFlipPitch = Math.sin(rp * Math.PI) * 0.55;
+          rainbowHeelKick = Math.sin(Math.min(1, rp * 1.45) * Math.PI);
+        }
+
+        const dir = kickExtend > 0 ? Math.cos(spinAngle) : (this.spinMoveTimer > 0 ? Math.cos(dribbleSpinAngle) * this.facing : this.facing);
+        const depthTwist = kickExtend > 0 ? Math.sin(spinAngle) : (this.spinMoveTimer > 0 ? Math.sin(dribbleSpinAngle) : 0);
+
+        const crossLean = this.crossoverTimer > 0 ? this.crossoverDir * 16 : 0;
+        const stealLean = this.stealTimer > 0 ? this.facing * 20 : 0;
+        const shotLift = isChargingShot ? 12 + shotMeterValue * 14 : 0;
+
+        const setNode = (idx, tx, ty, tz, lerp = 0.48) => {
+          const n = this.nodes[idx];
+          n.ox = n.x;
+          n.oy = n.y;
+          n.oz = n.z;
+          n.x += (tx - n.x) * lerp;
+          n.y += (ty - n.y) * lerp;
+          n.z += (tz - n.z) * lerp;
+        };
+
+        const leanX = crossLean + stealLean + (this.vx * 0.04) - (rainbowFlipPitch * 26 * this.facing) + (throwBend * 28 * this.facing);
+        setNode(2, baseX + leanX * 0.4, baseY + 66 - (rainbowFlipPitch * 10) - (throwBend * 14), baseZ);
+        setNode(1, baseX + leanX,       baseY + 110 - (rainbowFlipPitch * 16) - (throwBend * 26), baseZ + depthTwist * 6);
+        setNode(0, baseX + leanX * 1.15, baseY + 127 - (rainbowFlipPitch * 18) - (throwBend * 30), baseZ + depthTwist * 8);
+
+        const shSpan = 14 * Math.abs(dir) + 6;
+        setNode(3, baseX + leanX - shSpan, baseY + 106 - (throwBend * 24), baseZ - depthTwist * 12);
+        setNode(4, baseX + leanX + shSpan, baseY + 106 - (throwBend * 24), baseZ + depthTwist * 12);
+
+        if (this.throwTimer > 0) {
+          setNode(5, baseX + this.facing * 24, baseY + 98 - throwBend * 18, baseZ - 10, 0.8);
+          setNode(6, baseX + this.facing * 32, baseY + 104 - throwBend * 22, baseZ + 10, 0.8);
+        } else if (this.rainbowFlickTimer > 0) {
+          setNode(5, baseX - 34 * this.facing, baseY + 114, baseZ - 16, 0.65);
+          setNode(6, baseX + 34 * this.facing, baseY + 118, baseZ + 16, 0.65);
+        } else if (this.blockTimer > 0) {
+          setNode(5, baseX - this.facing * 14, baseY + 116, baseZ - 8, 0.72);
+          setNode(6, baseX + this.facing * 18, baseY + 162, baseZ + 10, 0.85);
+        } else if (this.isDunking || this.dunkAnimTimer > 0) {
+          if (this.dunkType === 'EASTBAY') {
+            const dp = this.dunkAnimTimer > 0 ? (1 - this.dunkAnimTimer / 0.55) : 0.35;
+            if (dp < 0.52) {
+              setNode(5, baseX - this.facing * 12, baseY + 52, baseZ - 12, 0.8);
+              setNode(6, baseX + this.facing * 10, baseY + 54, baseZ + 12, 0.8);
+            } else {
+              setNode(5, baseX - this.facing * 24, baseY + 128, baseZ - 14, 0.8);
+              setNode(6, baseX + this.facing * 26, baseY + 158, baseZ + 8, 0.85);
+            }
+          } else {
+            setNode(5, baseX + this.facing * 18, baseY + 148, baseZ + 8, 0.65);
+            setNode(6, baseX + this.facing * 22, baseY + 152, baseZ - 6, 0.65);
+          }
+        } else if (isChargingShot) {
+          setNode(5, baseX + this.facing * 14, baseY + 128 + shotLift, baseZ + 6, 0.65);
+          setNode(6, baseX + this.facing * 16, baseY + 132 + shotLift, baseZ - 6, 0.65);
+        } else if (this.stealTimer > 0) {
+          const reachX = baseX + this.facing * 48;
+          setNode(5, baseX - this.facing * 16, baseY + 96, baseZ - 12, 0.65);
+          setNode(6, reachX, baseY + 86, baseZ + 10, 0.8);
+        } else if (hasBall) {
+          const dribbleY = baseY + 52 + Math.abs(Math.sin(this.dribblePhase)) * 32;
+          const spinOrbitX = this.spinMoveTimer > 0 ? Math.sin(dribbleSpinAngle) * 26 : 0;
+          const spinOrbitZ = this.spinMoveTimer > 0 ? Math.cos(dribbleSpinAngle) * 18 : 12;
+          const activeHandX = baseX + this.dribbleHand * 24 + crossLean + spinOrbitX;
+          const offHandX = baseX - this.dribbleHand * 20 + crossLean * 0.5 - spinOrbitX * 0.6;
+          if (this.dribbleHand > 0) {
+            setNode(6, activeHandX, dribbleY, baseZ + spinOrbitZ, 0.75);
+            setNode(5, offHandX, baseY + 92, baseZ - 8, 0.55);
+          } else {
+            setNode(5, activeHandX, dribbleY, baseZ + spinOrbitZ, 0.75);
+            setNode(6, offHandX, baseY + 92, baseZ - 8, 0.55);
+          }
+        } else {
+          setNode(5, baseX - 24 - stride * 12, baseY + 92, baseZ - stride * 10);
+          setNode(6, baseX + 24 + stride * 12, baseY + 92, baseZ + stride * 10);
+        }
+
+        if (rainbowHeelKick > 0.05) {
+          setNode(7, baseX + this.facing * 14, baseY + 34, baseZ - 8, 0.65);
+          setNode(9, baseX + this.facing * 16, baseY + 4,  baseZ - 10, 0.75);
+
+          const heelArcX = baseX - this.facing * (24 * Math.sin(rainbowHeelKick * Math.PI * 0.75));
+          const heelArcY = baseY + 14 + rainbowHeelKick * 88;
+          setNode(8, baseX - this.facing * 8, baseY + 46 + rainbowHeelKick * 28, baseZ + 8, 0.7);
+          setNode(10, heelArcX, heelArcY, baseZ + 6, 0.82);
+        } else if (kickExtend > 0) {
+          setNode(7, baseX - this.facing * 8, baseY + 34, baseZ);
+          setNode(9, baseX - this.facing * 10, baseY + 4, baseZ);
+
+          const kickFootX = baseX + dir * (22 + kickExtend);
+          const kickFootY = baseY + 34 + kickExtend * 1.15;
+          const kickFootZ = baseZ + depthTwist * 42;
+          setNode(8, (baseX + kickFootX) * 0.5, (baseY + 66 + kickFootY) * 0.52, (baseZ + kickFootZ) * 0.5, 0.75);
+          setNode(10, kickFootX, kickFootY, kickFootZ, 0.85);
+        } else if (this.isDunking || this.dunkAnimTimer > 0) {
+          if (this.dunkType === 'EASTBAY') {
+            const dp = this.dunkAnimTimer > 0 ? (1 - this.dunkAnimTimer / 0.55) : 0.35;
+            const legLift = Math.sin(Math.min(1, dp * 1.4) * Math.PI) * 34;
+            setNode(7, baseX + this.facing * 18, baseY + 52 + legLift, baseZ - 10, 0.75);
+            setNode(9, baseX + this.facing * 32, baseY + 38 + legLift, baseZ - 12, 0.8);
+            setNode(8, baseX - this.facing * 18, baseY + 32, baseZ + 10, 0.75);
+            setNode(10, baseX - this.facing * 26, baseY + 6, baseZ + 12, 0.8);
+          } else {
+            setNode(7, baseX - 16, baseY + 46, baseZ - 8);
+            setNode(8, baseX + 16, baseY + 50, baseZ + 8);
+            setNode(9, baseX - 20, baseY + 16, baseZ - 10);
+            setNode(10, baseX + 20, baseY + 20, baseZ + 10);
+          }
+        } else if (this.isJumping) {
+          setNode(7, baseX - 12, baseY + 40, baseZ - 6);
+          setNode(8, baseX + 12, baseY + 44, baseZ + 6);
+          setNode(9, baseX - 14, baseY + 12, baseZ - 8);
+          setNode(10, baseX + 14, baseY + 16, baseZ + 8);
+        } else {
+          const footSpread = 11 + Math.abs(crossLean) * 0.45;
+          setNode(7, baseX - footSpread + stride * 12, baseY + 34 + Math.max(0, stride) * 6, baseZ + stride * 12);
+          setNode(8, baseX + footSpread - stride * 12, baseY + 34 + Math.max(0, -stride) * 6, baseZ - stride * 12);
+          setNode(9, baseX - footSpread - 2 + stride * 22, baseY + 4 + Math.max(0, stride) * 10, baseZ + stride * 20);
+          setNode(10, baseX + footSpread + 2 - stride * 22, baseY + 4 + Math.max(0, -stride) * 10, baseZ - stride * 20);
+        }
+      }
+
+      triggerRagdoll(impulseX, impulseY, impulseZ, duration = 2.1, reason = 'RAGDOLLED!') {
+        if (this.state === 'ragdoll' && this.ragdollTimer > 0.6) {
+          this.nodes.forEach((n) => {
+            n.ox -= impulseX * 0.018;
+            n.oy -= impulseY * 0.018;
+            n.oz -= impulseZ * 0.018;
+          });
+          this.ragdollTimer = Math.max(this.ragdollTimer, duration);
+          return;
+        }
+
+        this.state = 'ragdoll';
+        this.ragdollTimer = duration;
+        this.ragdollReason = reason;
+        this.isJumping = false;
+        this.isDunking = false;
+        this.dunkAnimTimer = 0;
+        this.stealTimer = 0;
+        this.blockTimer = 0;
+        this.kickTimer = 0;
+        this.throwTimer = 0;
+        this.rainbowFlickTimer = 0;
+
+        this.nodes.forEach((n, idx) => {
+          const topMultiplier = idx <= 6 ? 1.25 : 0.75;
+          const jitterX = (Math.random() - 0.5) * 45;
+          const jitterY = Math.random() * 40;
+          const jitterZ = (Math.random() - 0.5) * 45;
+          n.ox = n.x - (impulseX * topMultiplier + jitterX) * 0.016;
+          n.oy = n.y - (impulseY * topMultiplier + jitterY) * 0.016;
+          n.oz = n.z - (impulseZ * topMultiplier + jitterZ) * 0.016;
+        });
+      }
+
+      updatePhysics(dt) {
+        if (this.crossoverTimer > 0) this.crossoverTimer = Math.max(0, this.crossoverTimer - dt);
+        if (this.crossoverCooldown > 0) this.crossoverCooldown = Math.max(0, this.crossoverCooldown - dt);
+        if (this.spinMoveTimer > 0) this.spinMoveTimer = Math.max(0, this.spinMoveTimer - dt);
+        if (this.spinMoveCooldown > 0) this.spinMoveCooldown = Math.max(0, this.spinMoveCooldown - dt);
+        if (this.stealTimer > 0) this.stealTimer = Math.max(0, this.stealTimer - dt);
+        if (this.stealCooldown > 0) this.stealCooldown = Math.max(0, this.stealCooldown - dt);
+        if (this.blockTimer > 0) this.blockTimer = Math.max(0, this.blockTimer - dt);
+        if (this.blockCooldown > 0) this.blockCooldown = Math.max(0, this.blockCooldown - dt);
+        if (this.kickTimer > 0) this.kickTimer = Math.max(0, this.kickTimer - dt);
+        if (this.kickCooldown > 0) this.kickCooldown = Math.max(0, this.kickCooldown - dt);
+        if (this.throwTimer > 0) this.throwTimer = Math.max(0, this.throwTimer - dt);
+        if (this.throwCooldown > 0) this.throwCooldown = Math.max(0, this.throwCooldown - dt);
+        if (this.rainbowFlickTimer > 0) this.rainbowFlickTimer = Math.max(0, this.rainbowFlickTimer - dt);
+        if (this.dunkAnimTimer > 0) this.dunkAnimTimer = Math.max(0, this.dunkAnimTimer - dt);
+
+        if (this.state === 'ragdoll') {
+          this.ragdollTimer -= dt;
+          const gravity = -1250 * dt * dt;
+          const damping = 0.985;
+
+          for (const n of this.nodes) {
+            const vx = (n.x - n.ox) * damping;
+            const vy = (n.y - n.oy) * damping;
+            const vz = (n.z - n.oz) * damping;
+
+            n.ox = n.x;
+            n.oy = n.y;
+            n.oz = n.z;
+
+            n.x += vx;
+            n.y += vy + gravity;
+            n.z += vz;
+
+            if (n.y < n.r) {
+              n.y = n.r;
+              const bounce = Math.abs(vy) > 4 ? 0.45 : 0;
+              n.oy = n.y + vy * bounce;
+              n.ox = n.x - vx * 0.72;
+              n.oz = n.z - vz * 0.72;
+            }
+
+            if (n.x < COURT.minX + 12) {
+              n.x = COURT.minX + 12;
+              n.ox = n.x + vx * 0.55;
+            } else if (n.x > COURT.maxX - 12) {
+              n.x = COURT.maxX - 12;
+              n.ox = n.x + vx * 0.55;
+            }
+
+            if (n.z < COURT.minZ + 12) {
+              n.z = COURT.minZ + 12;
+              n.oz = n.z + vz * 0.55;
+            } else if (n.z > COURT.maxZ - 12) {
+              n.z = COURT.maxZ - 12;
+              n.oz = n.z + vz * 0.55;
+            }
+          }
+
+          for (let iter = 0; iter < 5; iter++) {
+            for (const [i, j, len] of this.sticks) {
+              const a = this.nodes[i];
+              const b = this.nodes[j];
+              const dx = b.x - a.x;
+              const dy = b.y - a.y;
+              const dz = b.z - a.z;
+              const dist = Math.hypot(dx, dy, dz) || 0.001;
+              const diff = (len - dist) / dist * 0.5;
+              const ox = dx * diff;
+              const oy = dy * diff;
+              const oz = dz * diff;
+
+              a.x -= ox;
+              a.y -= oy;
+              a.z -= oz;
+              b.x += ox;
+              b.y += oy;
+              b.z += oz;
+            }
+          }
+
+          this.x = this.nodes[2].x;
+          this.z = this.nodes[2].z;
+          this.y = Math.max(0, this.nodes[2].y - 66);
+
+          if (this.ragdollTimer <= 0) {
+            this.state = 'active';
+            this.y = 0;
+            this.vx = 0;
+            this.vy = 0;
+            this.vz = 0;
+          }
+          return;
+        }
+
+        if (this.isJumping || this.y > 0) {
+          this.vy -= 1280 * dt;
+          this.y += this.vy * dt;
+          if (this.y <= 0) {
+            this.y = 0;
+            this.vy = 0;
+            this.isJumping = false;
+            this.isDunking = false;
+          }
+        }
+
+        this.x += this.vx * dt;
+        this.z += this.vz * dt;
+
+        this.x = Math.max(COURT.minX + 24, Math.min(COURT.maxX - 24, this.x));
+        this.z = Math.max(COURT.minZ + 24, Math.min(COURT.maxZ - 24, this.z));
+
+        this.stamina = Math.min(100, this.stamina + 14 * dt);
+      }
+    }
+
+    // =========================================================================
+    // 5. BASKETBALL & GAME STATE (With Cinematic Intro & Live Demo Mode)
+    // =========================================================================
+    const ball = {
+      x: 0,
+      y: 45,
+      z: 240,
+      vx: 0,
+      vy: 0,
+      vz: 0,
+      radius: 13.5,
+      owner: null,
+      inShot: false,
+      shotGreen: false,
+      isDunkShot: false,
+      isEastbayDunk: false,
+      isRainbowUlt: false,
+      shotPoints: 1,
+      shooter: null,
+      shotStart: { x: 0, y: 0, z: 0 },
+      shotTarget: { x: 0, y: 0, z: 0 },
+      shotProgress: 0,
+      shotDuration: 0.85,
+      arcHeight: 165,
+      trail: [],
+      rimNetWave: 0
+    };
+
+    const game = {
+      mode: 'intro', // 'intro' | 'menu' | 'playing' | 'gameover'
+      running: false,
+      introTime: 0,
+      introDuration: 5.8,
+      introStageIndex: -1,
+      targetScore: 11,
+      playerScore: 0,
+      cpuScore: 0,
+      playerStreak: 0,
+      ultReady: false,
+      animeCutInTimer: 0,
+      animeCutInMax: 2.35,
+      ultScoreCloseUpTimer: 0,
+      throwCameraTimer: 0,
+      activeThrow: null,
+      slowMoTimer: 0,
+      hitStopTimer: 0,
+      checkBallTimer: 0,
+      particles: [],
+      floatingTexts: [],
+      rimShockwaves: [],
+      shotMeter: {
+        active: false,
+        value: 0,
+        speed: 1.32,
+        greenCenter: 0.76,
+        greenWidth: 0.11,
+        isDunk: false
+      },
+      cpuShotTimer: 0,
+      demoShotTimer: 0
+    };
+
+    const player = new RagdollPlayer({
+      id: 'player',
+      name: 'BALLER',
+      number: '23',
+      isPlayer: true,
+      jerseyColor: '#dc2626',
+      jerseyTrim: '#fef08a',
+      shortsColor: '#171717',
+      skinColor: '#8d5524',
+      shoeColor: '#ef4444',
+      headbandColor: '#ffffff',
+      x: -40,
+      z: 230
+    });
+
+    const cpu = new RagdollPlayer({
+      id: 'cpu',
+      name: 'LOCKDOWN',
+      number: '24',
+      isPlayer: false,
+      jerseyColor: '#0284c7',
+      jerseyTrim: '#38bdf8',
+      shortsColor: '#0f172a',
+      skinColor: '#c68642',
+      shoeColor: '#38bdf8',
+      headbandColor: '#facc15',
+      x: 10,
+      z: 330
+    });
+
+    // =========================================================================
+    // 6. UI CALLOUTS, STREAK HUD & PARTICLES
+    // =========================================================================
+    const calloutBanner = document.getElementById('calloutBanner');
+    const calloutMain = document.getElementById('calloutMain');
+    const calloutSub = document.getElementById('calloutSub');
+    let calloutTimeout = null;
+
+    function showCallout(mainText, subText, theme = 'gold') {
+      if (!game.running) return;
+      const themes = {
+        gold: 'bg-neutral-900/95 border-amber-400 text-amber-300',
+        green: 'bg-emerald-950/95 border-emerald-400 text-emerald-300',
+        red: 'bg-red-950/95 border-red-400 text-red-200',
+        blue: 'bg-sky-950/95 border-sky-400 text-sky-200',
+        rainbow: 'bg-neutral-950/95 border-fuchsia-400 text-fuchsia-200 shadow-[0_0_30px_rgba(232,121,249,0.75)]'
+      };
+      calloutBanner.className = `skew-2k px-4 py-1.5 rounded-md border-2 shadow-2xl text-left transition-all duration-150 ${themes[theme] || themes.gold}`;
+      calloutMain.textContent = mainText;
+      calloutSub.textContent = subText;
+
+      calloutBanner.style.opacity = '1';
+      calloutBanner.style.transform = 'skewX(-12deg) scale(1)';
+
+      clearTimeout(calloutTimeout);
+      calloutTimeout = setTimeout(() => {
+        calloutBanner.style.opacity = '0';
+        calloutBanner.style.transform = 'skewX(-12deg) scale(0.8)';
+      }, 1550);
+    }
+
+    function updateStreakHUD() {
+      const pip1 = document.getElementById('streakPip1');
+      const pip2 = document.getElementById('streakPip2');
+      const pip3 = document.getElementById('streakPip3');
+      const statusText = document.getElementById('ultStatusText');
+      const panel = document.getElementById('ultHudPanel');
+      const mobileUltBtn = document.getElementById('btnMobileUlt');
+
+      const s = Math.min(3, game.playerStreak);
+      pip1.className = `w-4 h-1.5 rounded-xs border border-white/20 ${s >= 1 ? 'bg-pink-500 shadow-[0_0_8px_#ec4899]' : 'bg-neutral-800'}`;
+      pip2.className = `w-4 h-1.5 rounded-xs border border-white/20 ${s >= 2 ? 'bg-amber-400 shadow-[0_0_8px_#facc15]' : 'bg-neutral-800'}`;
+      pip3.className = `w-4 h-1.5 rounded-xs border border-white/20 ${s >= 3 ? 'bg-cyan-400 shadow-[0_0_10px_#22d3ee]' : 'bg-neutral-800'}`;
+
+      if (game.ultReady) {
+        statusText.textContent = 'ULT READY!';
+        statusText.className = 'text-[11px] font-bold text-fuchsia-300 tracking-wider animate-pulse';
+        panel.style.boxShadow = '0 0 22px rgba(232, 121, 249, 0.75)';
+        panel.style.borderColor = 'rgba(232, 121, 249, 0.85)';
+        if (mobileUltBtn) mobileUltBtn.classList.remove('hidden');
+      } else {
+        statusText.textContent = `${s}/3`;
+        statusText.className = 'text-[11px] font-bold text-neutral-400 tracking-wider';
+        panel.style.boxShadow = '';
+        panel.style.borderColor = 'rgba(255, 255, 255, 0.14)';
+        if (mobileUltBtn) mobileUltBtn.classList.add('hidden');
+      }
+    }
+
+    function spawnParticles(x, y, z, color, count = 18, speed = 180) {
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const elev = (Math.random() - 0.2) * speed;
+        const spd = (0.3 + Math.random() * 0.7) * speed;
+        game.particles.push({
+          x, y, z,
+          vx: Math.cos(angle) * spd,
+          vy: Math.abs(elev) + 50,
+          vz: Math.sin(angle) * spd,
+          color,
+          size: 3 + Math.random() * 4.5,
+          life: 0.45 + Math.random() * 0.35,
+          maxLife: 0.8
+        });
+      }
+    }
+
+    function spawnRainbowExplosion(x, y, z, count = 42) {
+      const rainbowColors = ['#ff0055', '#ff7700', '#ffdd00', '#00ff88', '#00ccff', '#aa44ff'];
+      for (let i = 0; i < count; i++) {
+        const angle = (i / count) * Math.PI * 2 + Math.random() * 0.2;
+        const spd = 120 + Math.random() * 240;
+        game.particles.push({
+          x, y, z,
+          vx: Math.cos(angle) * spd,
+          vy: (Math.random() - 0.2) * 260 + 80,
+          vz: Math.sin(angle) * spd,
+          color: rainbowColors[i % rainbowColors.length],
+          size: 4 + Math.random() * 5,
+          life: 0.65 + Math.random() * 0.35,
+          maxLife: 1.0
+        });
+      }
+      game.rimShockwaves.push({ x, y, z, radius: 14, maxRadius: 155, life: 0.55, maxLife: 0.55 });
+    }
+
+    function spawnFloatingText(x, y, z, text, color = '#facc15') {
+      game.floatingTexts.push({
+        x, y, z,
+        text,
+        color,
+        life: 1.15
+      });
+    }
+
+    // =========================================================================
+    // 7. INPUT HANDLING (Keyboard + Touch Joystick & Buttons)
+    // =========================================================================
+    const keys = {};
+    const joy = { active: false, dx: 0, dy: 0 };
+
+    window.addEventListener('keydown', (e) => {
+      const code = e.code;
+      keys[code] = true;
+
+      if (game.mode === 'intro' && (code === 'Space' || code === 'Enter' || code === 'Escape')) {
+        e.preventDefault();
+        finishIntroToMenu();
+        return;
+      }
+
+      if (!game.running) return;
+      sfx.init();
+
+      if (code === 'KeyJ') attemptAnkleBreaker(player, cpu);
+      if (code === 'KeyL') attemptSpinMove(player, cpu);
+      if (code === 'KeyK') attemptSteal(player, cpu);
+      if (code === 'KeyQ') attemptSpinHookKick(player, cpu);
+      if (code === 'KeyM') attemptSeoiNage(player, cpu);
+      if (code === 'KeyR') attemptRainbowFlickUlt();
+
+      if (code === 'Space' && !e.repeat) {
+        e.preventDefault();
+        if (ball.owner === player) {
+          beginShotCharge();
+        } else {
+          attemptJumpBlock(player, cpu);
+        }
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      keys[e.code] = false;
+      if (e.code === 'Space' && game.running) {
+        releaseShot();
+      }
+    });
+
+    canvas.addEventListener('mousedown', (e) => {
+      if (!game.running || e.button !== 0) return;
+      sfx.init();
+      if (ball.owner === player) {
+        beginShotCharge();
+      } else {
+        attemptJumpBlock(player, cpu);
+      }
+    });
+    window.addEventListener('mouseup', (e) => {
+      if (game.running && e.button === 0 && game.shotMeter.active) {
+        releaseShot();
+      }
+    });
+
+    const joystickZone = document.getElementById('joystickZone');
+    const joystickKnob = document.getElementById('joystickKnob');
+
+    function handleJoystickTouch(e) {
+      e.preventDefault();
+      const touch = e.touches[0];
+      if (!touch) return;
+      const rect = joystickZone.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const maxR = rect.width * 0.36;
+      let dx = touch.clientX - cx;
+      let dy = touch.clientY - cy;
+      const dist = Math.hypot(dx, dy);
+      if (dist > maxR) {
+        dx = (dx / dist) * maxR;
+        dy = (dy / dist) * maxR;
+      }
+      joystickKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+      joy.active = true;
+      joy.dx = dx / maxR;
+      joy.dy = dy / maxR;
+    }
+
+    joystickZone.addEventListener('touchstart', handleJoystickTouch, { passive: false });
+    joystickZone.addEventListener('touchmove', handleJoystickTouch, { passive: false });
+    joystickZone.addEventListener('touchend', () => {
+      joy.active = false;
+      joy.dx = 0;
+      joy.dy = 0;
+      joystickKnob.style.transform = 'translate(0px, 0px)';
+    });
+
+    document.getElementById('btnMobileCross').addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      sfx.init();
+      attemptAnkleBreaker(player, cpu);
+    });
+    document.getElementById('btnMobileSpin').addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      sfx.init();
+      attemptSpinMove(player, cpu);
+    });
+    document.getElementById('btnMobileSteal').addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      sfx.init();
+      attemptSteal(player, cpu);
+    });
+    document.getElementById('btnMobileKick').addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      sfx.init();
+      attemptSpinHookKick(player, cpu);
+    });
+    document.getElementById('btnMobileThrow').addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      sfx.init();
+      attemptSeoiNage(player, cpu);
+    });
+    document.getElementById('btnMobileUlt').addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      sfx.init();
+      attemptRainbowFlickUlt();
+    });
+    const btnMobileShoot = document.getElementById('btnMobileShoot');
+    btnMobileShoot.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      sfx.init();
+      if (ball.owner === player) {
+        beginShotCharge();
+      } else {
+        attemptJumpBlock(player, cpu);
+      }
+    });
+    btnMobileShoot.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      releaseShot();
+    });
+
+    // =========================================================================
+    // 8. CORE GAMEPLAY MECHANICS
+    // =========================================================================
+    function attemptAnkleBreaker(attacker, defender) {
+      if (attacker.state !== 'active' || ball.owner !== attacker || game.shotMeter.active) return;
+      if (attacker.crossoverTimer > 0 || attacker.crossoverCooldown > 0 || attacker.stamina < 20) return;
+
+      attacker.stamina = Math.max(0, attacker.stamina - 22);
+      attacker.dribbleHand *= -1;
+      attacker.crossoverDir = attacker.dribbleHand;
+      attacker.crossoverTimer = 0.34;
+      attacker.crossoverCooldown = 0.85;
+
+      const burstDir = attacker.dribbleHand;
+      attacker.vx += burstDir * 245;
+      attacker.facing = burstDir;
+      if (game.running) sfx.playSqueak();
+      spawnParticles(attacker.x, 4, attacker.z, '#fef08a', 8, 90);
+
+      const dist = Math.hypot(attacker.x - defender.x, attacker.z - defender.z);
+      const diffCfg = AI_LEVELS[selectedDifficulty] || AI_LEVELS['ALL-STAR'];
+      const vulnMult = defender.isPlayer ? 1.0 : diffCfg.ankleVulnerability;
+
+      const breakRadius = 86 * vulnMult;
+      const successChance = defender.isPlayer ? 0.65 : Math.min(0.85, 0.62 * vulnMult);
+
+      if (defender.state === 'active' && dist < breakRadius && Math.random() < successChance) {
+        const knockDir = defender.x >= attacker.x ? 1 : -1;
+        defender.triggerRagdoll(knockDir * 290, 165, (Math.random() - 0.5) * 160, 1.75, 'ANKLES BROKEN!');
+        if (game.running) sfx.playAnkleBreaker();
+        camera.shake = 15;
+        game.slowMoTimer = 0.32;
+        attacker.hype = Math.min(100, attacker.hype + 25);
+
+        spawnParticles(defender.x, 12, defender.z, '#facc15', 20, 190);
+        spawnFloatingText(defender.x, 90, defender.z, 'ANKLES BROKEN!', '#facc15');
+        if (attacker.isPlayer) {
+          showCallout('ANKLE BREAKER!', 'LOCKDOWN DROPPED TO THE ASPHALT!', 'gold');
+        } else {
+          showCallout('CROSSOVER!', 'WATCH YOUR ANKLES!', 'blue');
+        }
+      }
+    }
+
+    function attemptSpinMove(spinner, defender) {
+      if (spinner.state !== 'active' || ball.owner !== spinner || game.shotMeter.active) return;
+      if (spinner.spinMoveTimer > 0 || spinner.spinMoveCooldown > 0 || spinner.stamina < 16) return;
+
+      spinner.stamina = Math.max(0, spinner.stamina - 18);
+      spinner.spinMoveTimer = 0.42;
+      spinner.spinMoveCooldown = 0.9;
+
+      const sideAroundDef = defender.x >= spinner.x ? -1 : 1;
+      spinner.spinMoveDir = sideAroundDef;
+      spinner.dribbleHand = sideAroundDef;
+      spinner.facing = sideAroundDef;
+
+      const toHoopZ = COURT.hoopZ - spinner.z;
+      const driveZ = toHoopZ > 30 ? 295 : 140;
+      spinner.vx = sideAroundDef * 265;
+      spinner.vz = driveZ;
+
+      if (game.running) sfx.playSqueak();
+      spawnParticles(spinner.x, 12, spinner.z, '#fb923c', 14, 135);
+
+      const dist = Math.hypot(spinner.x - defender.x, spinner.z - defender.z);
+      if (defender.state === 'active' && dist < 105) {
+        defender.vx += -sideAroundDef * 165;
+        defender.vz -= 95;
+        defender.stealCooldown = Math.max(defender.stealCooldown, 0.55);
+        spinner.hype = Math.min(100, spinner.hype + 16);
+        spawnFloatingText(spinner.x, 105, spinner.z, 'SPIN CYCLE!', '#fb923c');
+        if (spinner.isPlayer) {
+          showCallout('360 SPIN MOVE!', 'BLEW RIGHT PAST THE DEFENDER!', 'gold');
+        }
+      }
+    }
+
+    function attemptSteal(stealer, victim) {
+      if (stealer.state !== 'active' || stealer.stealCooldown > 0 || stealer.stealTimer > 0) return;
+      if (ball.owner === stealer || stealer.stamina < 10) return;
+
+      stealer.stamina = Math.max(0, stealer.stamina - 12);
+      stealer.stealTimer = 0.28;
+      stealer.stealCooldown = 0.85;
+      if (game.running) sfx.playStealSwipe();
+
+      const dx = victim.x - stealer.x;
+      const dz = victim.z - stealer.z;
+      const dist = Math.hypot(dx, dz) || 1;
+      if (dx !== 0) stealer.facing = dx > 0 ? 1 : -1;
+
+      stealer.vx += (dx / dist) * 210;
+      stealer.vz += (dz / dist) * 210;
+
+      if (ball.owner === victim && victim.state === 'active' && dist < 86 && !game.shotMeter.active) {
+        const stealChance = victim.crossoverTimer > 0 ? 0.25 : 0.72;
+        if (Math.random() < stealChance) {
+          ball.owner = stealer;
+          stealer.hype = Math.min(100, stealer.hype + 25);
+          camera.shake = 10;
+          if (game.running) sfx.playAnkleBreaker();
+          spawnParticles(ball.x, ball.y, ball.z, '#38bdf8', 18, 170);
+          spawnFloatingText(ball.x, ball.y + 45, ball.z, 'STEAL!', '#38bdf8');
+
+          if (Math.random() < 0.42) {
+            victim.triggerRagdoll((dx / dist) * 230, 140, (dz / dist) * 200, 1.75, 'RIPPED!');
+          }
+
+          if (stealer.isPlayer) {
+            showCallout('COOKIE! STEAL!', 'RIPPED THE BALL CLEAN!', 'blue');
+          } else {
+            showCallout('TURNOVER!', 'LOCKDOWN POKED IT LOOSE!', 'red');
+          }
+        } else {
+          spawnFloatingText(stealer.x, 95, stealer.z, 'REACH-IN MISS', '#94a3b8');
+        }
+      }
+    }
+
+    function attemptJumpBlock(blocker, shooter) {
+      if (blocker.state !== 'active' || ball.owner === blocker) return;
+      if (blocker.isJumping || blocker.blockCooldown > 0) return;
+
+      blocker.isJumping = true;
+      blocker.vy = 345;
+      blocker.blockTimer = 0.48;
+      blocker.blockCooldown = 0.65;
+      if (shooter.x !== blocker.x) {
+        blocker.facing = shooter.x > blocker.x ? 1 : -1;
+      }
+      if (game.running) sfx.playSqueak();
+
+      const distToBall = Math.hypot(blocker.x - ball.x, (blocker.y + 135) - ball.y, blocker.z - ball.z);
+      const distToShooter = Math.hypot(blocker.x - shooter.x, blocker.z - shooter.z);
+
+      if (ball.inShot && !ball.isRainbowUlt && ball.shotProgress < 0.55 && (distToBall < 110 || distToShooter < 95)) {
+        executeShotRejection(blocker, shooter);
+      }
+    }
+
+    function executeShotRejection(blocker, shooter) {
+      ball.inShot = false;
+      ball.isRainbowUlt = false;
+      ball.owner = null;
+
+      let pushX = blocker.x - COURT.hoopX;
+      let pushZ = blocker.z - COURT.hoopZ;
+      const len = Math.hypot(pushX, pushZ) || 1;
+      pushX /= len;
+      pushZ /= len;
+
+      ball.vx = pushX * 260 + (Math.random() - 0.5) * 160;
+      ball.vy = 220;
+      ball.vz = pushZ * 260 - 110;
+
+      if (game.running) sfx.playKickImpact();
+      game.hitStopTimer = 0.065;
+      camera.shake = 18;
+      blocker.hype = Math.min(100, blocker.hype + 30);
+
+      spawnParticles(ball.x, ball.y, ball.z, '#38bdf8', 26, 230);
+      spawnFloatingText(ball.x, ball.y + 35, ball.z, 'SWATTED!!', '#38bdf8');
+
+      if (shooter.state === 'active' && Math.hypot(blocker.x - shooter.x, blocker.z - shooter.z) < 88) {
+        shooter.triggerRagdoll(pushX * 290, 210, pushZ * 250, 2.0, 'STUFFED!');
+      }
+
+      if (blocker.isPlayer) {
+        showCallout('GET THAT OUTTA HERE!', 'MASSIVE SHOT REJECTION!', 'blue');
+      } else {
+        showCallout('REJECTED!', 'LOCKDOWN SWATTED YOUR SHOT!', 'red');
+      }
+    }
+
+    function attemptRainbowFlickUlt() {
+      if (!game.ultReady || player.state !== 'active' || ball.owner !== player) return;
+      if (game.shotMeter.active || ball.inShot) return;
+
+      game.ultReady = false;
+      game.playerStreak = 0;
+      updateStreakHUD();
+
+      game.animeCutInMax = 2.35;
+      game.animeCutInTimer = 2.35;
+      game.slowMoTimer = 1.15;
+      camera.shake = 26;
+      camera.targetZoom = 1.48;
+      camera.targetFocusX = player.x;
+      camera.targetFocusZ = player.z + 40;
+      player.rainbowFlickTimer = 1.1;
+      player.facing = COURT.hoopX >= player.x ? 1 : -1;
+      if (game.running) sfx.playAnimeUltTrigger();
+
+      const distToHoop = Math.hypot(player.x - COURT.hoopX, player.z - COURT.hoopZ);
+      const pts = distToHoop > COURT.twoPointRadius ? 2 : 1;
+
+      ball.owner = null;
+      ball.inShot = true;
+      ball.shotGreen = true;
+      ball.isRainbowUlt = true;
+      ball.shotPoints = pts;
+      ball.shooter = player;
+      ball.shotStart = { x: player.x - player.facing * 14, y: 28, z: player.z };
+      ball.shotTarget = { x: COURT.hoopX, y: COURT.hoopY + 6, z: COURT.hoopZ };
+      ball.shotProgress = 0;
+      ball.shotDuration = 1.65;
+      ball.arcHeight = 275;
+
+      const defDist = Math.hypot(cpu.x - player.x, cpu.z - player.z);
+      if (defDist < 210 && cpu.state === 'active') {
+        const pushX = (cpu.x - player.x) / (defDist || 1);
+        const pushZ = (cpu.z - player.z) / (defDist || 1);
+        cpu.triggerRagdoll(pushX * 450, 280, pushZ * 400, 2.4, 'RAINBOW AURA!');
+      }
+
+      spawnRainbowExplosion(player.x, 70, player.z, 42);
+      showCallout('RAINBOW FLICK!', 'UNSTOPPABLE HEEL FLICK ARC!', 'rainbow');
+    }
+
+    function attemptSpinHookKick(kicker, target) {
+      if (kicker.state !== 'active' || kicker.kickCooldown > 0 || kicker.kickTimer > 0) return;
+
+      kicker.kickTimer = 0.48;
+      kicker.kickCooldown = 1.35;
+      kicker.kickHitDone = false;
+      kicker.vy = 190;
+      kicker.isJumping = true;
+      if (game.running) sfx.playSpinKick();
+
+      if (target.x !== kicker.x) {
+        kicker.facing = target.x > kicker.x ? 1 : -1;
+      }
+
+      spawnParticles(kicker.x, 75, kicker.z, '#f97316', 12, 140);
+    }
+
+    function attemptSeoiNage(thrower, target) {
+      if (thrower.state !== 'active' || thrower.throwCooldown > 0 || thrower.throwTimer > 0) return;
+      if (ball.owner === thrower) {
+        if (thrower.isPlayer) showCallout('DEFENSE ONLY!', 'SEOI NAGE CAN ONLY BE USED ON DEFENSE!', 'gold');
+        return;
+      }
+
+      const dist = Math.hypot(thrower.x - target.x, thrower.z - target.z);
+      if (target.state !== 'active' || dist > 115) {
+        if (thrower.isPlayer) {
+          spawnFloatingText(thrower.x, 95, thrower.z, 'TOO FAR TO GRAB!', '#a5b4fc');
+        }
+        return;
+      }
+
+      thrower.throwCooldown = 15.0;
+      thrower.throwTimer = 0.58;
+      thrower.vx = 0;
+      thrower.vz = 0;
+
+      const throwDirX = thrower.x >= 0 ? -1 : 1;
+      const throwDirZ = thrower.z > 320 ? -0.45 : 0.35;
+      const norm = Math.hypot(throwDirX, throwDirZ) || 1;
+      const dirX = throwDirX / norm;
+      const dirZ = throwDirZ / norm;
+      thrower.facing = dirX >= 0 ? 1 : -1;
+
+      if (ball.owner === target) {
+        ball.owner = null;
+        ball.vx = -dirX * 140 + (Math.random() - 0.5) * 90;
+        ball.vy = 240;
+        ball.vz = -dirZ * 140;
+      }
+
+      game.activeThrow = {
+        thrower,
+        target,
+        startX: target.x,
+        startZ: target.z,
+        dirX,
+        dirZ,
+        elapsed: 0,
+        duration: 0.58
+      };
+
+      if (game.running) sfx.playSpinKick();
+      game.slowMoTimer = 0.95;
+      game.throwCameraTimer = 1.25;
+      camera.targetZoom = 1.56;
+      camera.targetFocusX = thrower.x;
+      camera.targetFocusZ = thrower.z;
+
+      spawnParticles(thrower.x, 85, thrower.z, '#818cf8', 22, 160);
+      showCallout('IPPON! SEOI NAGE!', 'OVER-THE-SHOULDER JUDO SLAM!', 'blue');
+    }
+
+    function resolveKickHitbox(kicker, target) {
+      if (kicker.kickTimer <= 0 || kicker.kickHitDone) return;
+      const progress = 1 - (kicker.kickTimer / 0.48);
+      if (progress < 0.25 || progress > 0.78) return;
+
+      const dist = Math.hypot(kicker.x - target.x, kicker.z - target.z);
+      if (dist < 118) {
+        kicker.kickHitDone = true;
+
+        let dx = target.x - kicker.x;
+        let dz = target.z - kicker.z;
+        const len = Math.hypot(dx, dz) || 1;
+        dx /= len;
+        dz /= len;
+
+        const launchPower = 780;
+        target.triggerRagdoll(dx * launchPower, 460, dz * launchPower, 2.9, 'KICKED INTO ORBIT!');
+
+        if (ball.owner === target) {
+          ball.owner = null;
+          ball.vx = dx * 280 + (Math.random() - 0.5) * 140;
+          ball.vy = 320;
+          ball.vz = dz * 280;
+        }
+
+        if (game.running) sfx.playKickImpact();
+        game.hitStopTimer = 0.085;
+        game.slowMoTimer = 0.36;
+        camera.shake = 26;
+        kicker.hype = Math.min(100, kicker.hype + 30);
+
+        const midX = (kicker.x + target.x) * 0.5;
+        const midZ = (kicker.z + target.z) * 0.5;
+        spawnParticles(midX, 85, midZ, '#ef4444', 32, 320);
+        spawnParticles(midX, 85, midZ, '#fde047', 18, 240);
+        spawnFloatingText(target.x, 120, target.z, 'WHAM!!', '#ef4444');
+
+        if (kicker.isPlayer) {
+          showCallout('SPIN HOOK KICK!', 'SENT FLYING INTO THE CAGE!', 'red');
+        }
+      }
+    }
+
+    function beginShotCharge() {
+      if (player.state !== 'active' || ball.owner !== player || game.shotMeter.active || ball.inShot) return;
+
+      const distToHoop = Math.hypot(player.x - COURT.hoopX, player.z - COURT.hoopZ);
+      const speed = Math.hypot(player.vx, player.vz);
+      const isDunk = distToHoop < 155 && speed > 85 && player.stamina > 18;
+
+      const defDist = Math.hypot(player.x - cpu.x, player.z - cpu.z);
+      const contestPenalty = cpu.state === 'active' && defDist < 78 ? 0.045 : 0;
+
+      game.shotMeter.active = true;
+      game.shotMeter.value = 0;
+      game.shotMeter.isDunk = isDunk;
+      game.shotMeter.greenCenter = isDunk ? 0.72 : 0.77;
+      game.shotMeter.greenWidth = Math.max(0.055, (isDunk ? 0.14 : 0.105) - contestPenalty);
+      game.shotMeter.speed = isDunk ? 1.48 : 1.28;
+
+      player.isJumping = true;
+      player.vy = isDunk ? 390 : 295;
+      player.facing = COURT.hoopX >= player.x ? 1 : -1;
+
+      if (isDunk) {
+        player.isDunking = true;
+        player.dunkType = 'EASTBAY';
+        player.dunkAnimTimer = 0.55;
+        player.stamina = Math.max(0, player.stamina - 18);
+        game.slowMoTimer = 0.28;
+        camera.shake = 10;
+      }
+
+      const diffCfg = AI_LEVELS[selectedDifficulty] || AI_LEVELS['ALL-STAR'];
+      if (cpu.state === 'active' && !cpu.isJumping && defDist < 115 && Math.random() < diffCfg.blockChance) {
+        setTimeout(() => {
+          if (game.running && cpu.state === 'active' && !cpu.isJumping) {
+            attemptJumpBlock(cpu, player);
+          }
+        }, 140 + Math.random() * 140);
+      }
+    }
+
+    function releaseShot() {
+      if (!game.shotMeter.active) return;
+      game.shotMeter.active = false;
+
+      const val = game.shotMeter.value;
+      const diff = Math.abs(val - game.shotMeter.greenCenter);
+      const isGreen = diff <= game.shotMeter.greenWidth * 0.5;
+      const isGood = diff <= game.shotMeter.greenWidth * 1.45;
+      const isDunk = game.shotMeter.isDunk;
+
+      const distToHoop = Math.hypot(player.x - COURT.hoopX, player.z - COURT.hoopZ);
+      const pts = distToHoop > COURT.twoPointRadius ? 2 : 1;
+
+      if (isDunk) {
+        ball.owner = null;
+        ball.inShot = true;
+        ball.shotGreen = isGreen || isGood;
+        ball.isDunkShot = true;
+        ball.isEastbayDunk = true;
+        ball.isRainbowUlt = false;
+        ball.shotPoints = 1;
+        ball.shooter = player;
+        ball.shotStart = { x: player.x, y: player.y + 52, z: player.z };
+        ball.shotTarget = { x: COURT.hoopX, y: COURT.hoopY + 6, z: COURT.hoopZ };
+        ball.shotProgress = 0;
+        ball.shotDuration = 0.44;
+        ball.arcHeight = 95;
+
+        player.dunkAnimTimer = 0.55;
+        player.x = COURT.hoopX + (player.x > 0 ? 20 : -20);
+        player.z = COURT.hoopZ - 24;
+        player.vy = 260;
+
+        if (isGreen || isGood) {
+          sfx.playGreenRelease();
+          game.slowMoTimer = 0.48;
+          game.hitStopTimer = 0.055;
+          camera.shake = 22;
+          spawnParticles(player.x, player.y + 85, player.z, '#facc15', 22, 180);
+          showCallout('BETWEEN THE LEGS!', 'EASTBAY POSTERIZER SLAM!', 'green');
+          if (cpu.state === 'active' && Math.hypot(cpu.x - COURT.hoopX, cpu.z - COURT.hoopZ) < 125) {
+            cpu.triggerRagdoll((cpu.x >= 0 ? 1 : -1) * 380, 250, -260, 2.35, 'POSTERIZED!');
+            spawnFloatingText(cpu.x, 115, cpu.z, 'POSTERIZED!', '#ef4444');
+          }
+        } else {
+          showCallout('RIM GRAZER!', 'LATE RELEASE OFF THE IRON!', 'red');
+        }
+        return;
+      }
+
+      ball.owner = null;
+      ball.inShot = true;
+      ball.shotGreen = isGreen;
+      ball.isDunkShot = false;
+      ball.isEastbayDunk = false;
+      ball.isRainbowUlt = false;
+      ball.shotPoints = pts;
+      ball.shooter = player;
+      ball.shotStart = { x: player.x, y: player.y + 132, z: player.z };
+
+      let makeShot = false;
+      if (isGreen) {
+        makeShot = true;
+        sfx.playGreenRelease();
+        spawnParticles(player.x, player.y + 135, player.z, '#22c55e', 20, 150);
+        showCallout('GREEN RELEASE!', pts === 2 ? 'EXCELLENT 2-PT SPLASH!' : 'EXCELLENT RELEASE!', 'green');
+      } else if (isGood && Math.random() < 0.58) {
+        makeShot = true;
+        showCallout('SLIGHTLY EARLY / LATE', 'GOOD TOUCH!', 'gold');
+      } else {
+        makeShot = false;
+        showCallout(val < game.shotMeter.greenCenter ? 'VERY EARLY' : 'VERY LATE', 'OFF THE RIM!', 'red');
+      }
+
+      if (makeShot) {
+        ball.shotTarget = { x: COURT.hoopX, y: COURT.hoopY + 4, z: COURT.hoopZ };
+      } else {
+        const missSide = (Math.random() > 0.5 ? 1 : -1) * (24 + Math.random() * 14);
+        ball.shotTarget = { x: COURT.hoopX + missSide, y: COURT.hoopY + 4, z: COURT.hoopZ - 10 };
+      }
+
+      ball.shotProgress = 0;
+      ball.shotDuration = Math.min(1.05, 0.62 + distToHoop * 0.00085);
+      ball.arcHeight = 135 + distToHoop * 0.22;
+    }
+
+    function launchShooterDemoOrCpuShot(shooter) {
+      if (shooter.state !== 'active' || ball.owner !== shooter || ball.inShot) return;
+
+      const diffCfg = AI_LEVELS[selectedDifficulty] || AI_LEVELS['ALL-STAR'];
+      const distToHoop = Math.hypot(shooter.x - COURT.hoopX, shooter.z - COURT.hoopZ);
+      const pts = distToHoop > COURT.twoPointRadius ? 2 : 1;
+      const defender = shooter.isPlayer ? cpu : player;
+      const defDist = Math.hypot(shooter.x - defender.x, shooter.z - defender.z);
+      const contested = defender.state === 'active' && defDist < 75;
+      const hitChance = !game.running ? 0.82 : (contested ? diffCfg.shotHitChance * 0.55 : diffCfg.shotHitChance);
+      const makeShot = Math.random() < hitChance;
+
+      shooter.isJumping = true;
+      shooter.vy = 290;
+      shooter.facing = COURT.hoopX >= shooter.x ? 1 : -1;
+
+      ball.owner = null;
+      ball.inShot = true;
+      ball.shotGreen = makeShot && Math.random() < 0.65;
+      ball.isDunkShot = false;
+      ball.isEastbayDunk = false;
+      ball.isRainbowUlt = false;
+      ball.shotPoints = pts;
+      ball.shooter = shooter;
+      ball.shotStart = { x: shooter.x, y: shooter.y + 132, z: shooter.z };
+      ball.shotTarget = makeShot
+        ? { x: COURT.hoopX, y: COURT.hoopY + 4, z: COURT.hoopZ }
+        : { x: COURT.hoopX + (Math.random() > 0.5 ? 28 : -28), y: COURT.hoopY + 4, z: COURT.hoopZ - 8 };
+      ball.shotProgress = 0;
+      ball.shotDuration = Math.min(1.0, 0.62 + distToHoop * 0.0008);
+      ball.arcHeight = 135 + distToHoop * 0.2;
+    }
+
+    function handleScore(scorer, pts, wasRainbowUlt = false, wasDunk = false) {
+      ball.rimNetWave = 1.0;
+
+      // In background demo mode (intro or main menu), celebrate visually and keep demo flowing!
+      if (!game.running) {
+        ball.inShot = false;
+        ball.isDunkShot = false;
+        ball.isEastbayDunk = false;
+        ball.isRainbowUlt = false;
+        ball.owner = scorer === player ? cpu : player;
+        spawnParticles(COURT.hoopX, COURT.hoopY, COURT.hoopZ, '#facc15', 26, 200);
+        spawnFloatingText(COURT.hoopX, COURT.hoopY + 25, COURT.hoopZ, pts >= 2 ? 'SPLASH +2!' : 'SWISH!', '#facc15');
+        return;
+      }
+
+      sfx.playSwish();
+      sfx.playScoreCelebration(wasDunk || wasRainbowUlt, pts >= 2);
+
+      if (wasRainbowUlt) {
+        sfx.playKickImpact();
+        camera.shake = 44;
+        camera.targetZoom = 1.62;
+        camera.targetFocusX = COURT.hoopX;
+        camera.targetFocusZ = COURT.hoopZ - 45;
+        game.ultScoreCloseUpTimer = 1.35;
+        game.hitStopTimer = 0.14;
+        game.slowMoTimer = 0.55;
+        spawnRainbowExplosion(COURT.hoopX, COURT.hoopY, COURT.hoopZ, 68);
+        setTimeout(() => {
+          if (game.running) {
+            camera.shake = Math.max(camera.shake, 32);
+            spawnRainbowExplosion(COURT.hoopX, COURT.hoopY - 10, COURT.hoopZ, 40);
+          }
+        }, 180);
+      } else if (wasDunk) {
+        sfx.playKickImpact();
+        camera.shake = 34;
+        game.hitStopTimer = 0.095;
+        game.slowMoTimer = 0.52;
+        spawnParticles(COURT.hoopX, COURT.hoopY, COURT.hoopZ, '#facc15', 36, 240);
+        spawnParticles(COURT.hoopX, COURT.hoopY, COURT.hoopZ, '#22c55e', 26, 200);
+        game.rimShockwaves.push({ x: COURT.hoopX, y: COURT.hoopY, z: COURT.hoopZ, radius: 14, maxRadius: 125, life: 0.45, maxLife: 0.45 });
+      } else {
+        camera.shake = pts >= 2 ? 22 : 16;
+        game.slowMoTimer = Math.max(game.slowMoTimer, pts >= 2 ? 0.36 : 0.24);
+        spawnParticles(COURT.hoopX, COURT.hoopY, COURT.hoopZ, '#22c55e', 28, 190);
+      }
+
+      if (scorer.isPlayer) {
+        game.playerScore += pts;
+        player.hype = Math.min(100, player.hype + (wasRainbowUlt ? 50 : 25));
+
+        if (!wasRainbowUlt) {
+          game.playerStreak += 1;
+          if (game.playerStreak >= 3 && !game.ultReady) {
+            game.ultReady = true;
+            sfx.playAnimeUltTrigger();
+            showCallout('3 IN A ROW! ULT READY!', 'PRESS [R] FOR RAINBOW FLICK!', 'rainbow');
+          } else {
+            showCallout(pts === 2 ? '+2 DEEP SPLASH!' : '+1 BUCKET!', `STREAK: ${game.playerStreak}/3 • MAKE IT TAKE IT`, 'green');
+          }
+        } else {
+          showCallout(`+${pts} RAINBOW FLICK!`, 'HEEL-FLICK PERFECTION FROM DOWNTOWN!', 'rainbow');
+        }
+        updateStreakHUD();
+      } else {
+        game.cpuScore += pts;
+        if (!game.ultReady && game.playerStreak > 0) {
+          game.playerStreak = 0;
+          updateStreakHUD();
+        }
+        showCallout(pts === 2 ? 'CPU +2 POINTER!' : 'LOCKDOWN SCORES!', 'DEFEND THE PERIMETER!', 'blue');
+      }
+
+      document.getElementById('playerScore').textContent = game.playerScore;
+      document.getElementById('cpuScore').textContent = game.cpuScore;
+
+      if (game.playerScore >= game.targetScore || game.cpuScore >= game.targetScore) {
+        endMatch(game.playerScore >= game.targetScore);
+        return;
+      }
+
+      ball.inShot = false;
+      ball.isDunkShot = false;
+      ball.isEastbayDunk = false;
+      ball.isRainbowUlt = false;
+      ball.owner = scorer;
+      ball.vx = 0;
+      ball.vy = 0;
+      ball.vz = 0;
+
+      player.state = 'active';
+      cpu.state = 'active';
+      player.y = 0;
+      cpu.y = 0;
+      player.vx = 0;
+      player.vz = 0;
+      cpu.vx = 0;
+      cpu.vz = 0;
+
+      if (scorer.isPlayer) {
+        player.x = 0;
+        player.z = 210;
+        cpu.x = 0;
+        cpu.z = 310;
+      } else {
+        cpu.x = 0;
+        cpu.z = 210;
+        player.x = 0;
+        player.z = 310;
+      }
+      game.checkBallTimer = 0.65;
+    }
+
+    // =========================================================================
+    // 9. CINEMATIC INTRO & LIVE ROOFTOP DEMO LOOP + MAIN UPDATE
+    // =========================================================================
+    const introOverlay = document.getElementById('introOverlay');
+    const introKicker = document.getElementById('introKicker');
+    const introHeadline = document.getElementById('introHeadline');
+    const introSubline = document.getElementById('introSubline');
+    const introPhaseLabel = document.getElementById('introPhaseLabel');
+    const introProgressBar = document.getElementById('introProgressBar');
+
+    const INTRO_STAGES = [
+      {
+        at: 0.0,
+        kicker: '2K SPORTS PRESENTS',
+        headline: 'ROOFTOP BLACKTOP',
+        sub: 'SUNSET CAGE • HIGH-STAKES STREETBALL',
+        phase: 'CAMERA 01 // ROOFTOP SKYLINE PAN'
+      },
+      {
+        at: 1.9,
+        kicker: 'NO FOULS • NO MERCY',
+        headline: 'BREAK ANKLES. SLAM.',
+        sub: 'VERLET RAGDOLL PHYSICS • RAINBOW FLICK ULTS',
+        phase: 'CAMERA 02 // COURT-LEVEL ACTION'
+      },
+      {
+        at: 3.8,
+        kicker: 'MAKE IT TAKE IT • GAME TO 11',
+        headline: 'NBA 2K14 BLACKTOP',
+        sub: 'RAGDOLL EDITION',
+        phase: 'CAMERA 03 // READY FOR TIP-OFF'
+      }
+    ];
+
+    function triggerIntroStageVisual(idx) {
+      const stage = INTRO_STAGES[idx];
+      if (!stage) return;
+      introKicker.querySelector('span').textContent = stage.kicker;
+      introHeadline.textContent = stage.headline;
+      introSubline.querySelector('span').textContent = stage.sub;
+      introPhaseLabel.textContent = stage.phase;
+
+      // Retrigger slam animation
+      introHeadline.classList.remove('intro-slam');
+      void introHeadline.offsetWidth;
+      introHeadline.classList.add('intro-slam');
+      sfx.playIntroSting();
+    }
+
+    function startIntroSequence() {
+      game.mode = 'intro';
+      game.running = false;
+      game.introTime = 0;
+      game.introStageIndex = -1;
+      sfx.setMusicMode('intro');
+
+      document.getElementById('hudTop').classList.add('hidden');
+      document.getElementById('hudBottom').classList.add('hidden');
+      document.getElementById('mobileControls').classList.add('hidden');
+      overlayModal.classList.add('hidden');
+
+      introOverlay.classList.remove('hidden');
+      introOverlay.style.opacity = '1';
+
+      // Set up lively demo players on court
+      player.state = 'active';
+      cpu.state = 'active';
+      player.x = -80;
+      player.z = 230;
+      cpu.x = 60;
+      cpu.z = 330;
+      ball.owner = player;
+      ball.inShot = false;
+    }
+
+    function finishIntroToMenu() {
+      if (game.mode === 'menu') return;
+      game.mode = 'menu';
+      game.running = false;
+      sfx.playMenuSelect();
+      sfx.setMusicMode('hiphop');
+
+      introOverlay.style.opacity = '0';
+      setTimeout(() => {
+        if (game.mode === 'menu') {
+          introOverlay.classList.add('hidden');
+        }
+      }, 420);
+
+      document.getElementById('hudTop').classList.add('hidden');
+      document.getElementById('hudBottom').classList.add('hidden');
+      document.getElementById('mobileControls').classList.add('hidden');
+      overlayModal.classList.remove('hidden');
+    }
+
+    function updateDemoCourt(dt) {
+      // Live AI vs AI rooftop action behind the Intro & Main Menu
+      const t = performance.now() * 0.0014;
+      const offense = ball.owner === cpu ? cpu : player;
+      const defense = offense === player ? cpu : player;
+
+      if (offense.state === 'active' && ball.owner === offense) {
+        const targetX = Math.sin(t * 1.3) * 195;
+        const targetZ = 270 + Math.cos(t * 0.9) * 85;
+        offense.vx += ((targetX - offense.x) * 3.2 - offense.vx) * 5 * dt;
+        offense.vz += ((targetZ - offense.z) * 3.2 - offense.vz) * 5 * dt;
+        offense.facing = COURT.hoopX >= offense.x ? 1 : -1;
+
+        if (Math.random() < 0.012) {
+          if (Math.random() < 0.55) attemptAnkleBreaker(offense, defense);
+          else attemptSpinMove(offense, defense);
+        }
+
+        game.demoShotTimer += dt;
+        if (game.demoShotTimer > 2.8) {
+          game.demoShotTimer = 0;
+          launchShooterDemoOrCpuShot(offense);
+        }
+      }
+
+      if (defense.state === 'active' && ball.owner === offense) {
+        const gx = offense.x * 0.85;
+        const gz = Math.min(COURT.hoopZ - 35, offense.z + 68);
+        defense.vx += ((gx - defense.x) * 3.6 - defense.vx) * 6 * dt;
+        defense.vz += ((gz - defense.z) * 3.6 - defense.vz) * 6 * dt;
+        defense.facing = offense.x >= defense.x ? 1 : -1;
+      } else if (!ball.owner && !ball.inShot) {
+        for (const p of [player, cpu]) {
+          if (p.state === 'active') {
+            p.vx += ((ball.x - p.x) * 3.5 - p.vx) * 6 * dt;
+            p.vz += ((ball.z - p.z) * 3.5 - p.vz) * 6 * dt;
+          }
+        }
+      }
+    }
+
+    function update(dt) {
+      // Handle Intro Timeline & Camera Choreography
+      if (game.mode === 'intro') {
+        game.introTime += dt;
+        const pct = Math.min(100, (game.introTime / game.introDuration) * 100);
+        introProgressBar.style.width = `${pct}%`;
+
+        let desiredStage = 0;
+        if (game.introTime >= 3.8) desiredStage = 2;
+        else if (game.introTime >= 1.9) desiredStage = 1;
+
+        if (desiredStage !== game.introStageIndex) {
+          game.introStageIndex = desiredStage;
+          triggerIntroStageVisual(desiredStage);
+          if (desiredStage === 1) {
+            spawnRainbowExplosion(0, 80, 320, 36);
+            camera.shake = 14;
+          }
+        }
+
+        // Sweeping broadcast camera angles during intro
+        if (desiredStage === 0) {
+          camera.targetZoom = 1.24;
+          camera.targetFocusX = Math.sin(game.introTime * 1.2) * 140;
+          camera.targetFocusZ = 440;
+        } else if (desiredStage === 1) {
+          camera.targetZoom = 1.32;
+          camera.targetFocusX = player.x * 0.7;
+          camera.targetFocusZ = 310;
+        } else {
+          camera.targetZoom = 1.06;
+          camera.targetFocusX = 0;
+          camera.targetFocusZ = 350;
+        }
+
+        if (game.introTime >= game.introDuration) {
+          finishIntroToMenu();
+        }
+      } else if (game.mode === 'menu') {
+        // Gentle orbital rooftop showcase camera during main menu
+        camera.targetZoom = 1.08;
+        camera.targetFocusX = Math.sin(performance.now() * 0.0005) * 95;
+        camera.targetFocusZ = 355;
+      }
+
+      if (!game.running) {
+        // Run live rooftop demo simulation in background during Intro & Main Menu
+        if (camera.shake > 0) camera.shake = Math.max(0, camera.shake - dt * 42);
+        if (ball.rimNetWave > 0) ball.rimNetWave = Math.max(0, ball.rimNetWave - dt * 2.2);
+
+        updateDemoCourt(dt);
+        player.updatePhysics(dt);
+        cpu.updatePhysics(dt);
+
+        if (player.state === 'active') {
+          player.dribblePhase += dt * (8 + Math.hypot(player.vx, player.vz) * 0.03);
+          player.syncSkeletonToPose(dt, ball.owner === player, false, 0);
+        }
+        if (cpu.state === 'active') {
+          cpu.dribblePhase += dt * (8 + Math.hypot(cpu.vx, cpu.vz) * 0.03);
+          cpu.syncSkeletonToPose(dt, ball.owner === cpu, false, 0);
+        }
+
+        updateBallAndParticles(dt);
+
+        camera.zoom += (camera.targetZoom - camera.zoom) * Math.min(1, 5.0 * dt);
+        camera.focusX += (camera.targetFocusX - camera.focusX) * Math.min(1, 5.0 * dt);
+        camera.focusZ += (camera.targetFocusZ - camera.focusZ) * Math.min(1, 5.0 * dt);
+        return;
+      }
+
+      if (game.hitStopTimer > 0) {
+        game.hitStopTimer -= dt;
+        return;
+      }
+
+      if (game.animeCutInTimer > 0) game.animeCutInTimer = Math.max(0, game.animeCutInTimer - dt);
+      if (game.ultScoreCloseUpTimer > 0) game.ultScoreCloseUpTimer = Math.max(0, game.ultScoreCloseUpTimer - dt);
+      if (game.throwCameraTimer > 0) game.throwCameraTimer = Math.max(0, game.throwCameraTimer - dt);
+
+      let simDt = dt;
+      if (game.slowMoTimer > 0) {
+        game.slowMoTimer -= dt;
+        simDt = dt * 0.42;
+      }
+
+      if (camera.shake > 0) camera.shake = Math.max(0, camera.shake - dt * 42);
+      if (ball.rimNetWave > 0) ball.rimNetWave = Math.max(0, ball.rimNetWave - dt * 2.2);
+
+      if (game.checkBallTimer > 0) {
+        game.checkBallTimer -= simDt;
+      }
+
+      if (game.shotMeter.active) {
+        game.shotMeter.value += game.shotMeter.speed * simDt;
+        if (game.shotMeter.value >= 1.0) {
+          game.shotMeter.value = 1.0;
+          releaseShot();
+        }
+      }
+
+      // --- PLAYER MOVEMENT ---
+      if (player.state === 'active' && game.checkBallTimer <= 0) {
+        let moveX = 0;
+        let moveZ = 0;
+        if (keys['KeyA'] || keys['ArrowLeft']) moveX -= 1;
+        if (keys['KeyD'] || keys['ArrowRight']) moveX += 1;
+        if (keys['KeyW'] || keys['ArrowUp']) moveZ += 1;
+        if (keys['KeyS'] || keys['ArrowDown']) moveZ -= 1;
+
+        if (joy.active) {
+          moveX = joy.dx;
+          moveZ = -joy.dy;
+        }
+
+        const len = Math.hypot(moveX, moveZ);
+        if (len > 0.05) {
+          moveX /= Math.max(1, len);
+          moveZ /= Math.max(1, len);
+          const sprint = (keys['ShiftLeft'] || keys['ShiftRight']) && player.stamina > 5 ? 1.25 : 1.0;
+          const speed = (game.shotMeter.active ? 90 : 255) * sprint;
+          player.vx += (moveX * speed - player.vx) * 12 * simDt;
+          player.vz += (moveZ * speed - player.vz) * 12 * simDt;
+          if (Math.abs(moveX) > 0.15) player.facing = moveX > 0 ? 1 : -1;
+        } else {
+          player.vx *= Math.pow(0.001, simDt);
+          player.vz *= Math.pow(0.001, simDt);
+        }
+      } else {
+        player.vx *= 0.85;
+        player.vz *= 0.85;
+      }
+
+      // --- CPU AI LOGIC ---
+      const diffCfg = AI_LEVELS[selectedDifficulty] || AI_LEVELS['ALL-STAR'];
+      if (cpu.state === 'active' && game.checkBallTimer <= 0) {
+        if (ball.owner === cpu) {
+          const targetZ = 330 + Math.sin(performance.now() * 0.002) * 80;
+          const targetX = Math.sin(performance.now() * 0.0016) * 210;
+          const dx = targetX - cpu.x;
+          const dz = targetZ - cpu.z;
+          const d = Math.hypot(dx, dz) || 1;
+          const cpuSpeed = 205 * diffCfg.speedMult;
+          cpu.vx += ((dx / d) * cpuSpeed - cpu.vx) * 7 * simDt;
+          cpu.vz += ((dz / d) * cpuSpeed - cpu.vz) * 7 * simDt;
+          cpu.facing = COURT.hoopX >= cpu.x ? 1 : -1;
+
+          const playerDist = Math.hypot(player.x - cpu.x, player.z - cpu.z);
+          if (playerDist < 95 && Math.random() < 0.015 * diffCfg.speedMult) {
+            if (Math.random() < 0.5) {
+              attemptAnkleBreaker(cpu, player);
+            } else {
+              attemptSpinMove(cpu, player);
+            }
+          }
+
+          game.cpuShotTimer += simDt;
+          if (game.cpuShotTimer > (2.1 / diffCfg.speedMult) && (player.state === 'ragdoll' || playerDist > 72 || game.cpuShotTimer > 4.2)) {
+            game.cpuShotTimer = 0;
+            launchShooterDemoOrCpuShot(cpu);
+          }
+        } else if (ball.owner === player) {
+          const guardX = player.x * 0.84;
+          const guardZ = Math.min(COURT.hoopZ - 28, player.z + diffCfg.guardDistance);
+          const dx = guardX - cpu.x;
+          const dz = guardZ - cpu.z;
+          const d = Math.hypot(dx, dz) || 1;
+          const chaseSpeed = 225 * diffCfg.speedMult;
+          cpu.vx += ((dx / d) * chaseSpeed - cpu.vx) * 8 * simDt;
+          cpu.vz += ((dz / d) * chaseSpeed - cpu.vz) * 8 * simDt;
+          cpu.facing = player.x >= cpu.x ? 1 : -1;
+
+          const distToPlayer = Math.hypot(player.x - cpu.x, player.z - cpu.z);
+          if (distToPlayer < 82 && Math.random() < diffCfg.stealChancePerFrame) {
+            attemptSteal(cpu, player);
+          }
+        } else if (ball.inShot && ball.shooter === player && !ball.isRainbowUlt) {
+          const distToBall = Math.hypot(cpu.x - ball.x, cpu.z - ball.z);
+          if (!cpu.isJumping && distToBall < 115 && ball.shotProgress < 0.45 && Math.random() < diffCfg.blockChance * 0.14) {
+            attemptJumpBlock(cpu, player);
+          }
+        } else if (!ball.inShot) {
+          const dx = ball.x - cpu.x;
+          const dz = ball.z - cpu.z;
+          const d = Math.hypot(dx, dz) || 1;
+          const looseSpeed = 240 * diffCfg.speedMult;
+          cpu.vx += ((dx / d) * looseSpeed - cpu.vx) * 8 * simDt;
+          cpu.vz += ((dz / d) * looseSpeed - cpu.vz) * 8 * simDt;
+        }
+      } else {
+        cpu.vx *= 0.85;
+        cpu.vz *= 0.85;
+      }
+
+      player.updatePhysics(simDt);
+      cpu.updatePhysics(simDt);
+
+      if (game.activeThrow) {
+        const tr = game.activeThrow;
+        tr.elapsed += simDt;
+        const p = Math.min(1, tr.elapsed / tr.duration);
+
+        const arcX = tr.thrower.x + tr.dirX * (-24 + p * 76);
+        const arcZ = tr.thrower.z + tr.dirZ * (-20 + p * 68);
+        const arcY = Math.sin(p * Math.PI * 0.85) * 145;
+
+        tr.target.x = arcX;
+        tr.target.y = arcY;
+        tr.target.z = arcZ;
+        tr.target.vx = 0;
+        tr.target.vy = 0;
+        tr.target.vz = 0;
+        tr.target.syncSkeletonToPose(simDt, false, false, 0);
+
+        camera.targetZoom = 1.58;
+        camera.targetFocusX = arcX;
+        camera.targetFocusZ = arcZ;
+
+        if (p >= 1) {
+          game.activeThrow = null;
+          tr.target.y = 0;
+          const skidPower = 820;
+          tr.target.triggerRagdoll(tr.dirX * skidPower, 240, tr.dirZ * skidPower, 3.0, 'SEOI NAGE SLAM!');
+
+          sfx.playKickImpact();
+          game.hitStopTimer = 0.095;
+          game.slowMoTimer = 0.35;
+          camera.shake = 36;
+          tr.thrower.hype = Math.min(100, tr.thrower.hype + 35);
+
+          spawnParticles(arcX, 8, arcZ, '#818cf8', 34, 290);
+          spawnParticles(arcX, 8, arcZ, '#facc15', 22, 240);
+          game.rimShockwaves.push({ x: arcX, y: 4, z: arcZ, radius: 16, maxRadius: 145, life: 0.5, maxLife: 0.5 });
+          spawnFloatingText(arcX, 110, arcZ, 'IPPON SLAM!!', '#818cf8');
+        }
+      }
+
+      resolveKickHitbox(player, cpu);
+
+      if (ball.inShot && !ball.isRainbowUlt && ball.shotProgress < 0.65) {
+        if (player.blockTimer > 0 && ball.shooter === cpu) {
+          const d = Math.hypot(player.x - ball.x, (player.y + 145) - ball.y, player.z - ball.z);
+          if (d < 92) executeShotRejection(player, cpu);
+        }
+        if (cpu.blockTimer > 0 && ball.shooter === player) {
+          const d = Math.hypot(cpu.x - ball.x, (cpu.y + 145) - ball.y, cpu.z - ball.z);
+          if (d < 92) executeShotRejection(cpu, player);
+        }
+      }
+
+      if (player.state === 'active') {
+        player.dribblePhase += simDt * (8 + Math.hypot(player.vx, player.vz) * 0.03);
+        player.syncSkeletonToPose(simDt, ball.owner === player, game.shotMeter.active, game.shotMeter.value);
+      }
+      if (cpu.state === 'active') {
+        cpu.dribblePhase += simDt * (8 + Math.hypot(cpu.vx, cpu.vz) * 0.03);
+        cpu.syncSkeletonToPose(simDt, ball.owner === cpu, false, 0);
+      }
+
+      updateBallAndParticles(simDt);
+
+      if (game.ultScoreCloseUpTimer > 0) {
+        camera.targetZoom = 1.62;
+        camera.targetFocusX = COURT.hoopX;
+        camera.targetFocusZ = COURT.hoopZ - 45;
+      } else if (game.throwCameraTimer > 0 || game.activeThrow) {
+        // Keep close-up camera focused on the Seoi Nage throw and floor impact
+      } else if (!ball.isRainbowUlt && game.animeCutInTimer <= 0) {
+        camera.targetZoom = 1.0;
+        camera.targetFocusX = (player.x + cpu.x) * 0.5;
+        camera.targetFocusZ = 340;
+      }
+
+      camera.zoom += (camera.targetZoom - camera.zoom) * Math.min(1, 7.5 * dt);
+      camera.focusX += (camera.targetFocusX - camera.focusX) * Math.min(1, 7.0 * dt);
+      camera.focusZ += (camera.targetFocusZ - camera.focusZ) * Math.min(1, 7.0 * dt);
+
+      document.getElementById('staminaBar').style.width = `${player.stamina}%`;
+      document.getElementById('hypeBar').style.width = `${player.hype}%`;
+      const kickReadyRatio = Math.max(0, 1 - player.kickCooldown / 1.35);
+      document.getElementById('kickCooldownBar').style.width = `${kickReadyRatio * 100}%`;
+      const kickStatus = document.getElementById('kickStatusText');
+      if (kickReadyRatio >= 0.99) {
+        kickStatus.textContent = 'READY';
+        kickStatus.className = 'text-[11px] font-bold text-amber-400 tracking-wider';
+      } else {
+        kickStatus.textContent = `${(player.kickCooldown).toFixed(1)}s`;
+        kickStatus.className = 'text-[11px] font-bold text-neutral-400 tracking-wider';
+      }
+
+      const throwReadyRatio = Math.max(0, 1 - player.throwCooldown / 15.0);
+      document.getElementById('throwCooldownBar').style.width = `${throwReadyRatio * 100}%`;
+      const throwStatus = document.getElementById('throwStatusText');
+      if (throwReadyRatio >= 0.99) {
+        throwStatus.textContent = 'READY';
+        throwStatus.className = 'text-[11px] font-bold text-indigo-300 tracking-wider';
+      } else {
+        throwStatus.textContent = `${(player.throwCooldown).toFixed(1)}s`;
+        throwStatus.className = 'text-[11px] font-bold text-neutral-400 tracking-wider';
+      }
+
+      const posBadge = document.getElementById('possessionBadge');
+      if (ball.owner === player) {
+        posBadge.textContent = 'YOUR BALL';
+        posBadge.className = 'unskew-2k text-[10px] font-bold px-1.5 py-0.5 rounded-xs bg-red-500/25 text-red-300 border border-red-400/40 tracking-wider';
+      } else if (ball.owner === cpu) {
+        posBadge.textContent = 'CPU BALL';
+        posBadge.className = 'unskew-2k text-[10px] font-bold px-1.5 py-0.5 rounded-xs bg-sky-500/25 text-sky-300 border border-sky-400/40 tracking-wider';
+      } else {
+        posBadge.textContent = 'LOOSE BALL';
+        posBadge.className = 'unskew-2k text-[10px] font-bold px-1.5 py-0.5 rounded-xs bg-amber-500/25 text-amber-300 border border-amber-400/40 tracking-wider';
+      }
+    }
+
+    function updateBallAndParticles(simDt) {
+      if (ball.owner) {
+        const o = ball.owner;
+        if (o.state !== 'active') {
+          ball.owner = null;
+          ball.vy = 160;
+          ball.vx = (Math.random() - 0.5) * 180;
+          ball.vz = (Math.random() - 0.5) * 180;
+        } else {
+          const handNode = o.dribbleHand > 0 ? o.nodes[6] : o.nodes[5];
+          const bounceY = Math.abs(Math.sin(o.dribblePhase)) * 54 + ball.radius;
+          ball.x = handNode.x + o.dribbleHand * 6;
+          ball.z = handNode.z + 10;
+          ball.y = game.shotMeter.active && o.isPlayer ? handNode.y + 4 : bounceY;
+
+          if (bounceY < ball.radius + 3 && Math.sin(o.dribblePhase) < 0 && !game.shotMeter.active) {
+            if (!ball._bounced) {
+              if (game.running) sfx.playBounce(0.65);
+              ball._bounced = true;
+            }
+          } else {
+            ball._bounced = false;
+          }
+        }
+      } else if (ball.inShot) {
+        ball.shotProgress += simDt / ball.shotDuration;
+        const t = Math.min(1, ball.shotProgress);
+
+        if (ball.isRainbowUlt) {
+          const loopBack = Math.sin(Math.min(1, t * 2.2) * Math.PI) * (-player.facing * 42);
+          ball.x = ball.shotStart.x + (ball.shotTarget.x - ball.shotStart.x) * t + loopBack;
+          ball.z = ball.shotStart.z + (ball.shotTarget.z - ball.shotStart.z) * t;
+          ball.y = ball.shotStart.y + (ball.shotTarget.y - ball.shotStart.y) * t + Math.sin(t * Math.PI) * ball.arcHeight;
+
+          if (t < 0.42) {
+            camera.targetZoom = 1.48;
+            camera.targetFocusX = player.x * 0.7 + ball.x * 0.3;
+            camera.targetFocusZ = player.z + 45;
+          } else {
+            camera.targetZoom = 1.32 + (t - 0.42) * 0.52;
+            camera.targetFocusX = ball.x * 0.65 + COURT.hoopX * 0.35;
+            camera.targetFocusZ = ball.z * 0.6 + (COURT.hoopZ - 40) * 0.4;
+          }
+        } else if (ball.isEastbayDunk) {
+          const underLegDip = Math.sin(Math.min(1, t * 2.0) * Math.PI) * -32;
+          ball.x = ball.shotStart.x + (ball.shotTarget.x - ball.shotStart.x) * t;
+          ball.z = ball.shotStart.z + (ball.shotTarget.z - ball.shotStart.z) * t;
+          ball.y = ball.shotStart.y + (ball.shotTarget.y - ball.shotStart.y) * t + Math.sin(t * Math.PI) * ball.arcHeight + underLegDip;
+          ball.trail.push({ x: ball.x, y: ball.y, z: ball.z, green: true, life: 0.22 });
+        } else {
+          ball.x = ball.shotStart.x + (ball.shotTarget.x - ball.shotStart.x) * t;
+          ball.z = ball.shotStart.z + (ball.shotTarget.z - ball.shotStart.z) * t;
+          ball.y = ball.shotStart.y + (ball.shotTarget.y - ball.shotStart.y) * t + Math.sin(t * Math.PI) * ball.arcHeight;
+        }
+
+        if (ball.isRainbowUlt) {
+          const rainbowColors = ['#ff0055', '#ff7700', '#ffdd00', '#00ff88', '#00ccff', '#aa44ff'];
+          const c = rainbowColors[Math.floor(t * 28) % rainbowColors.length];
+          ball.trail.push({ x: ball.x, y: ball.y, z: ball.z, green: false, rainbowColor: c, life: 0.45 });
+        } else if (ball.shotGreen) {
+          ball.trail.push({ x: ball.x, y: ball.y, z: ball.z, green: true, life: 0.25 });
+        }
+
+        if (t >= 1) {
+          const distFromRimCenter = Math.hypot(ball.x - COURT.hoopX, ball.z - COURT.hoopZ);
+          if (distFromRimCenter < 14) {
+            handleScore(ball.shooter, ball.shotPoints, ball.isRainbowUlt, ball.isDunkShot);
+          } else {
+            if (game.running) sfx.playRimClank();
+            camera.shake = 9;
+            ball.inShot = false;
+            ball.isDunkShot = false;
+            ball.isEastbayDunk = false;
+            ball.isRainbowUlt = false;
+            ball.vx = (ball.x - COURT.hoopX) * 6 + (Math.random() - 0.5) * 90;
+            ball.vy = 210;
+            ball.vz = -160 - Math.random() * 80;
+            spawnParticles(ball.x, ball.y, ball.z, '#f97316', 10, 120);
+          }
+        }
+      } else {
+        ball.vy -= 1150 * simDt;
+        ball.x += ball.vx * simDt;
+        ball.y += ball.vy * simDt;
+        ball.z += ball.vz * simDt;
+
+        if (ball.y <= ball.radius) {
+          ball.y = ball.radius;
+          if (Math.abs(ball.vy) > 65) {
+            if (game.running) sfx.playBounce(Math.min(1.2, Math.abs(ball.vy) / 350));
+            ball.vy = -ball.vy * 0.68;
+            ball.vx *= 0.85;
+            ball.vz *= 0.85;
+          } else {
+            ball.vy = 0;
+            ball.vx *= 0.92;
+            ball.vz *= 0.92;
+          }
+        }
+
+        if (ball.x < COURT.minX + ball.radius) {
+          ball.x = COURT.minX + ball.radius;
+          ball.vx = Math.abs(ball.vx) * 0.75;
+        } else if (ball.x > COURT.maxX - ball.radius) {
+          ball.x = COURT.maxX - ball.radius;
+          ball.vx = -Math.abs(ball.vx) * 0.75;
+        }
+        if (ball.z < COURT.minZ + ball.radius) {
+          ball.z = COURT.minZ + ball.radius;
+          ball.vz = Math.abs(ball.vz) * 0.75;
+        } else if (ball.z > COURT.maxZ - ball.radius) {
+          ball.z = COURT.maxZ - ball.radius;
+          ball.vz = -Math.abs(ball.vz) * 0.75;
+        }
+
+        for (const p of [player, cpu]) {
+          if (p.state === 'active' && ball.y < 110) {
+            const dist = Math.hypot(p.x - ball.x, p.z - ball.z);
+            if (dist < 44) {
+              ball.owner = p;
+              ball.vx = 0;
+              ball.vy = 0;
+              ball.vz = 0;
+              if (game.running) spawnFloatingText(p.x, 95, p.z, 'REBOUND!', '#38bdf8');
+              break;
+            }
+          }
+        }
+      }
+
+      for (let i = ball.trail.length - 1; i >= 0; i--) {
+        ball.trail[i].life -= simDt;
+        if (ball.trail[i].life <= 0) ball.trail.splice(i, 1);
+      }
+      for (let i = game.particles.length - 1; i >= 0; i--) {
+        const pt = game.particles[i];
+        pt.life -= simDt;
+        pt.vy -= 650 * simDt;
+        pt.x += pt.vx * simDt;
+        pt.y = Math.max(2, pt.y + pt.vy * simDt);
+        pt.z += pt.vz * simDt;
+        if (pt.life <= 0) game.particles.splice(i, 1);
+      }
+      for (let i = game.rimShockwaves.length - 1; i >= 0; i--) {
+        const sw = game.rimShockwaves[i];
+        sw.life -= simDt;
+        const prog = 1 - Math.max(0, sw.life / sw.maxLife);
+        sw.radius = 14 + (sw.maxRadius - 14) * prog;
+        if (sw.life <= 0) game.rimShockwaves.splice(i, 1);
+      }
+      for (let i = game.floatingTexts.length - 1; i >= 0; i--) {
+        const ft = game.floatingTexts[i];
+        ft.life -= simDt;
+        ft.y += 38 * simDt;
+        if (ft.life <= 0) game.floatingTexts.splice(i, 1);
+      }
+    }
+
+    // =========================================================================
+    // 10. 2.5D RENDERER
+    // =========================================================================
+    function drawBackgroundAndCourt() {
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, H * 0.44);
+      skyGrad.addColorStop(0, '#140c24');
+      skyGrad.addColorStop(0.45, '#581c3c');
+      skyGrad.addColorStop(0.82, '#d95d24');
+      skyGrad.addColorStop(1, '#f59e0b');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, W, H);
+
+      const sunY = H * 0.21;
+      const sunGrad = ctx.createRadialGradient(W * 0.5, sunY, 10, W * 0.5, sunY, 220);
+      sunGrad.addColorStop(0, 'rgba(254, 240, 138, 0.92)');
+      sunGrad.addColorStop(0.35, 'rgba(251, 146, 60, 0.42)');
+      sunGrad.addColorStop(1, 'rgba(251, 146, 60, 0)');
+      ctx.fillStyle = sunGrad;
+      ctx.fillRect(0, 0, W, H * 0.48);
+
+      const horizonY = H * 0.25;
+      ctx.fillStyle = '#181424';
+      const buildings = [
+        [0.02, 0.08, 120], [0.11, 0.07, 165], [0.19, 0.09, 105],
+        [0.29, 0.06, 190], [0.36, 0.08, 140], [0.58, 0.07, 175],
+        [0.66, 0.09, 130], [0.76, 0.06, 200], [0.83, 0.08, 145],
+        [0.92, 0.08, 115]
+      ];
+      buildings.forEach(([bx, bw, bh]) => {
+        const rx = bx * W;
+        const rw = bw * W;
+        const rh = bh * (H / 800);
+        ctx.fillRect(rx, horizonY - rh, rw, rh + 60);
+
+        ctx.fillStyle = 'rgba(253, 224, 71, 0.2)';
+        for (let wy = horizonY - rh + 12; wy < horizonY - 10; wy += 16) {
+          for (let wx = rx + 8; wx < rx + rw - 10; wx += 14) {
+            if ((Math.floor(wx + wy) % 3) === 0) {
+              ctx.fillRect(wx, wy, 5, 8);
+            }
+          }
+        }
+        ctx.fillStyle = '#181424';
+      });
+
+      const deckGrad = ctx.createLinearGradient(0, horizonY, 0, H);
+      deckGrad.addColorStop(0, '#22242a');
+      deckGrad.addColorStop(1, '#111216');
+      ctx.fillStyle = deckGrad;
+      ctx.fillRect(0, horizonY, W, H - horizonY);
+
+      const cBL = worldToScreen(COURT.minX, 0, COURT.minZ);
+      const cBR = worldToScreen(COURT.maxX, 0, COURT.minZ);
+      const cTR = worldToScreen(COURT.maxX, 0, COURT.maxZ);
+      const cTL = worldToScreen(COURT.minX, 0, COURT.maxZ);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(cBL.x, cBL.y);
+      ctx.lineTo(cBR.x, cBR.y);
+      ctx.lineTo(cTR.x, cTR.y);
+      ctx.lineTo(cTL.x, cTL.y);
+      ctx.closePath();
+
+      const courtGrad = ctx.createLinearGradient(0, cTL.y, 0, cBL.y);
+      courtGrad.addColorStop(0, '#363a42');
+      courtGrad.addColorStop(0.5, '#434852');
+      courtGrad.addColorStop(1, '#2f333b');
+      ctx.fillStyle = courtGrad;
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+      ctx.lineWidth = 1;
+      for (let z = COURT.minZ; z <= COURT.maxZ; z += 40) {
+        const p1 = worldToScreen(COURT.minX, 0, z);
+        const p2 = worldToScreen(COURT.maxX, 0, z);
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+      }
+
+      const keyW = 135;
+      const keyMinZ = 415;
+      const kBL = worldToScreen(-keyW, 0, keyMinZ);
+      const kBR = worldToScreen(keyW, 0, keyMinZ);
+      const kTR = worldToScreen(keyW, 0, COURT.maxZ);
+      const kTL = worldToScreen(-keyW, 0, COURT.maxZ);
+
+      ctx.fillStyle = 'rgba(185, 28, 28, 0.74)';
+      ctx.beginPath();
+      ctx.moveTo(kBL.x, kBL.y);
+      ctx.lineTo(kBR.x, kBR.y);
+      ctx.lineTo(kTR.x, kTR.y);
+      ctx.lineTo(kTL.x, kTL.y);
+      ctx.closePath();
+      ctx.fill();
+
+      const logoPos = worldToScreen(0, 0, 290);
+      ctx.save();
+      ctx.translate(logoPos.x, logoPos.y);
+      ctx.scale(logoPos.scale, logoPos.scale * 0.72);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.beginPath();
+      ctx.arc(0, 0, 68, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = 'bold 34px Teko, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+      ctx.fillText('2K14 BLACKTOP', 0, 2);
+      ctx.restore();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.lineWidth = 3;
+
+      ctx.beginPath();
+      ctx.moveTo(cBL.x, cBL.y);
+      ctx.lineTo(cBR.x, cBR.y);
+      ctx.lineTo(cTR.x, cTR.y);
+      ctx.lineTo(cTL.x, cTL.y);
+      ctx.closePath();
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(kBL.x, kBL.y);
+      ctx.lineTo(kBR.x, kBR.y);
+      ctx.lineTo(kTR.x, kTR.y);
+      ctx.lineTo(kTL.x, kTL.y);
+      ctx.stroke();
+
+      ctx.beginPath();
+      for (let i = 0; i <= 32; i++) {
+        const ang = (i / 32) * Math.PI * 2;
+        const fx = Math.cos(ang) * keyW;
+        const fz = keyMinZ + Math.sin(ang) * keyW;
+        const pt = worldToScreen(fx, 0, fz);
+        if (i === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      }
+      ctx.stroke();
+
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      let startedArc = false;
+      for (let i = 0; i <= 48; i++) {
+        const ang = Math.PI * 1.06 + (i / 48) * (Math.PI * 0.88);
+        const ax = COURT.hoopX + Math.cos(ang) * COURT.twoPointRadius;
+        const az = COURT.hoopZ + Math.sin(ang) * COURT.twoPointRadius;
+        if (ax >= COURT.minX + 18 && ax <= COURT.maxX - 18 && az >= COURT.minZ + 12) {
+          const pt = worldToScreen(ax, 0, az);
+          if (!startedArc) {
+            ctx.moveTo(pt.x, pt.y);
+            startedArc = true;
+          } else {
+            ctx.lineTo(pt.x, pt.y);
+          }
+        }
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      drawChainLinkFence(COURT.minX, COURT.maxX, COURT.maxZ, 125);
+      drawChainLinkFenceSide(COURT.minX, COURT.minZ, COURT.maxZ, 115);
+      drawChainLinkFenceSide(COURT.maxX, COURT.minZ, COURT.maxZ, 115);
+    }
+
+    function drawChainLinkFence(x1, x2, z, height) {
+      const b1 = worldToScreen(x1, 0, z);
+      const b2 = worldToScreen(x2, 0, z);
+      const t1 = worldToScreen(x1, height, z);
+      const t2 = worldToScreen(x2, height, z);
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(200, 210, 225, 0.25)';
+      ctx.lineWidth = 1.2;
+
+      const cols = 38;
+      for (let i = 0; i <= cols; i++) {
+        const u = i / cols;
+        const bx = b1.x + (b2.x - b1.x) * u;
+        const by = b1.y + (b2.y - b1.y) * u;
+        const tx = t1.x + (t2.x - t1.x) * u;
+        const ty = t1.y + (t2.y - t1.y) * u;
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.lineTo(tx, ty);
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = '#71717a';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(t1.x, t1.y);
+      ctx.lineTo(t2.x, t2.y);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawChainLinkFenceSide(x, z1, z2, height) {
+      const b1 = worldToScreen(x, 0, z1);
+      const b2 = worldToScreen(x, 0, z2);
+      const t1 = worldToScreen(x, height, z1);
+      const t2 = worldToScreen(x, height, z2);
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(200, 210, 225, 0.2)';
+      ctx.lineWidth = 1;
+      const steps = 22;
+      for (let i = 0; i <= steps; i++) {
+        const u = i / steps;
+        ctx.beginPath();
+        ctx.moveTo(b1.x + (b2.x - b1.x) * u, b1.y + (b2.y - b1.y) * u);
+        ctx.lineTo(t1.x + (t2.x - t1.x) * u, t1.y + (t2.y - t1.y) * u);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = '#71717a';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(t1.x, t1.y);
+      ctx.lineTo(t2.x, t2.y);
+      ctx.moveTo(b1.x, b1.y);
+      ctx.lineTo(t1.x, t1.y);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawHoopSystem() {
+      const poleBase = worldToScreen(COURT.hoopX, 0, COURT.backboardZ + 28);
+      const poleTop = worldToScreen(COURT.hoopX, COURT.hoopY + 45, COURT.backboardZ + 28);
+      const boardCenter = worldToScreen(COURT.hoopX, COURT.hoopY + 34, COURT.backboardZ);
+
+      ctx.save();
+      ctx.strokeStyle = '#18181b';
+      ctx.lineWidth = 14 * poleBase.scale;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(poleBase.x, poleBase.y);
+      ctx.lineTo(poleTop.x, poleTop.y);
+      ctx.lineTo(boardCenter.x, boardCenter.y);
+      ctx.stroke();
+
+      ctx.fillStyle = '#dc2626';
+      const padTop = worldToScreen(COURT.hoopX, 110, COURT.backboardZ + 28);
+      ctx.fillRect(
+        poleBase.x - 11 * poleBase.scale,
+        padTop.y,
+        22 * poleBase.scale,
+        poleBase.y - padTop.y
+      );
+
+      const bbW = 72;
+      const bbH = 46;
+      const bbBL = worldToScreen(COURT.hoopX - bbW, COURT.hoopY - 8, COURT.backboardZ);
+      const bbBR = worldToScreen(COURT.hoopX + bbW, COURT.hoopY - 8, COURT.backboardZ);
+      const bbTR = worldToScreen(COURT.hoopX + bbW, COURT.hoopY + bbH * 1.6, COURT.backboardZ);
+      const bbTL = worldToScreen(COURT.hoopX - bbW, COURT.hoopY + bbH * 1.6, COURT.backboardZ);
+
+      ctx.fillStyle = 'rgba(224, 242, 254, 0.24)';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(bbBL.x, bbBL.y);
+      ctx.lineTo(bbBR.x, bbBR.y);
+      ctx.lineTo(bbTR.x, bbTR.y);
+      ctx.lineTo(bbTL.x, bbTL.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      const sqBL = worldToScreen(COURT.hoopX - 22, COURT.hoopY + 2, COURT.backboardZ);
+      const sqBR = worldToScreen(COURT.hoopX + 22, COURT.hoopY + 2, COURT.backboardZ);
+      const sqTR = worldToScreen(COURT.hoopX + 22, COURT.hoopY + 34, COURT.backboardZ);
+      const sqTL = worldToScreen(COURT.hoopX - 22, COURT.hoopY + 34, COURT.backboardZ);
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(sqBL.x, sqBL.y);
+      ctx.lineTo(sqBR.x, sqBR.y);
+      ctx.lineTo(sqTR.x, sqTR.y);
+      ctx.lineTo(sqTL.x, sqTL.y);
+      ctx.closePath();
+      ctx.stroke();
+
+      const sway = Math.sin(performance.now() * 0.025) * ball.rimNetWave * 10;
+      const netSegments = 10;
+      ctx.strokeStyle = 'rgba(228, 228, 231, 0.88)';
+      ctx.lineWidth = 1.6;
+      for (let i = 0; i < netSegments; i++) {
+        const a1 = (i / netSegments) * Math.PI * 2;
+        const a2 = ((i + 1) / netSegments) * Math.PI * 2;
+        const top1 = worldToScreen(
+          COURT.hoopX + Math.cos(a1) * COURT.rimRadius,
+          COURT.hoopY,
+          COURT.hoopZ + Math.sin(a1) * COURT.rimRadius
+        );
+        const bot1 = worldToScreen(
+          COURT.hoopX + Math.cos(a1 + 0.25) * (COURT.rimRadius * 0.62) + sway,
+          COURT.hoopY - 36 + ball.rimNetWave * 8,
+          COURT.hoopZ + Math.sin(a1 + 0.25) * (COURT.rimRadius * 0.62)
+        );
+        const bot2 = worldToScreen(
+          COURT.hoopX + Math.cos(a2 - 0.25) * (COURT.rimRadius * 0.62) + sway,
+          COURT.hoopY - 36 + ball.rimNetWave * 8,
+          COURT.hoopZ + Math.sin(a2 - 0.25) * (COURT.rimRadius * 0.62)
+        );
+        ctx.beginPath();
+        ctx.moveTo(top1.x, top1.y);
+        ctx.lineTo(bot1.x, bot1.y);
+        ctx.lineTo(bot2.x, bot2.y);
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = '#ea580c';
+      ctx.lineWidth = 4.5 * boardCenter.scale;
+      ctx.beginPath();
+      for (let i = 0; i <= 24; i++) {
+        const ang = (i / 24) * Math.PI * 2;
+        const rx = COURT.hoopX + Math.cos(ang) * COURT.rimRadius;
+        const rz = COURT.hoopZ + Math.sin(ang) * COURT.rimRadius;
+        const pt = worldToScreen(rx, COURT.hoopY, rz);
+        if (i === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawRagdollPlayer(p) {
+      const pts = p.nodes.map((n) => worldToScreen(n.x, n.y, n.z));
+      const scale = pts[2].scale;
+
+      const shadowPos = worldToScreen(p.x, 0, p.z);
+      ctx.save();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.46)';
+      ctx.beginPath();
+      ctx.ellipse(
+        shadowPos.x,
+        shadowPos.y,
+        (p.state === 'ragdoll' ? 42 : 24) * shadowPos.scale,
+        (p.state === 'ragdoll' ? 18 : 11) * shadowPos.scale,
+        0, 0, Math.PI * 2
+      );
+      ctx.fill();
+
+      if (p.isPlayer && game.ultReady && p.state === 'active') {
+        const hue = (performance.now() * 0.25) % 360;
+        ctx.strokeStyle = `hsla(${hue}, 95%, 62%, 0.9)`;
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.ellipse(shadowPos.x, shadowPos.y, 34 * shadowPos.scale, 16 * shadowPos.scale, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      if (p.isPlayer && p.state === 'active' && game.running) {
+        ctx.strokeStyle = ball.owner === p ? 'rgba(239, 68, 68, 0.9)' : 'rgba(255, 255, 255, 0.45)';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.ellipse(shadowPos.x, shadowPos.y, 29 * shadowPos.scale, 13 * shadowPos.scale, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      const drawLimb = (a, b, width, color) => {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width * scale;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      };
+
+      drawLimb(pts[2], pts[7], 11, p.shortsColor);
+      drawLimb(pts[2], pts[8], 11, p.shortsColor);
+      drawLimb(pts[7], pts[9], 8, p.skinColor);
+      drawLimb(pts[8], pts[10], 8, p.skinColor);
+
+      [pts[9], pts[10]].forEach((foot) => {
+        ctx.fillStyle = p.shoeColor;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(foot.x + p.facing * 4 * scale, foot.y, 9 * scale, 5 * scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      });
+
+      const backArmIdx = p.facing >= 0 ? [3, 5] : [4, 6];
+      drawLimb(pts[backArmIdx[0]], pts[backArmIdx[1]], 7.5, p.skinColor);
+
+      ctx.fillStyle = p.jerseyColor;
+      ctx.strokeStyle = p.jerseyTrim;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(pts[3].x, pts[3].y);
+      ctx.lineTo(pts[4].x, pts[4].y);
+      ctx.lineTo(pts[2].x + 11 * scale, pts[2].y);
+      ctx.lineTo(pts[2].x - 11 * scale, pts[2].y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      const chestX = (pts[1].x + pts[2].x) * 0.5;
+      const chestY = (pts[1].y + pts[2].y) * 0.5;
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${Math.max(10, Math.round(15 * scale))}px Teko, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(p.number, chestX, chestY);
+
+      const frontArmIdx = p.facing >= 0 ? [4, 6] : [3, 5];
+      drawLimb(pts[frontArmIdx[0]], pts[frontArmIdx[1]], 8, p.skinColor);
+
+      const head = pts[0];
+      ctx.fillStyle = p.skinColor;
+      ctx.beginPath();
+      ctx.arc(head.x, head.y, 12 * scale, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = p.headbandColor;
+      ctx.lineWidth = 3.2 * scale;
+      ctx.beginPath();
+      ctx.moveTo(head.x - 10 * scale, head.y - 4 * scale);
+      ctx.lineTo(head.x + 10 * scale, head.y - 4 * scale);
+      ctx.stroke();
+
+      const labelPos = worldToScreen(p.x, (p.state === 'ragdoll' ? 65 : 155) + p.y, p.z);
+      ctx.font = 'bold 12px Oswald, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = p.state === 'ragdoll' ? '#facc15' : 'rgba(255, 255, 255, 0.85)';
+      ctx.fillText(p.state === 'ragdoll' ? p.ragdollReason : p.name, labelPos.x, labelPos.y);
+
+      if (p.stealTimer > 0) {
+        const hand = pts[6];
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.85)';
+        ctx.lineWidth = 4 * scale;
+        ctx.beginPath();
+        ctx.arc(hand.x, hand.y, 24 * scale, -0.8, 1.1);
+        ctx.stroke();
+      }
+
+      if (p.blockTimer > 0) {
+        const hand = pts[6];
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.9)';
+        ctx.lineWidth = 4.5 * scale;
+        ctx.beginPath();
+        ctx.arc(hand.x, hand.y, 26 * scale, -Math.PI * 0.85, -Math.PI * 0.15);
+        ctx.stroke();
+      }
+
+      if (p.kickTimer > 0) {
+        const foot = pts[10];
+        ctx.strokeStyle = 'rgba(251, 146, 60, 0.85)';
+        ctx.lineWidth = 6 * scale;
+        ctx.beginPath();
+        ctx.arc(pts[2].x, pts[2].y, Math.hypot(foot.x - pts[2].x, foot.y - pts[2].y), -Math.PI * 0.8, Math.PI * 0.2);
+        ctx.stroke();
+      }
+
+      if (p.spinMoveTimer > 0) {
+        const hip = pts[2];
+        ctx.strokeStyle = 'rgba(251, 146, 60, 0.85)';
+        ctx.lineWidth = 3.5 * scale;
+        ctx.beginPath();
+        ctx.ellipse(hip.x, hip.y + 10 * scale, 28 * scale, 11 * scale, 0, 0, Math.PI * 1.65);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    function drawBasketball() {
+      for (const tr of ball.trail) {
+        const tp = worldToScreen(tr.x, tr.y, tr.z);
+        ctx.save();
+        if (tr.rainbowColor) {
+          ctx.fillStyle = tr.rainbowColor;
+          ctx.globalAlpha = Math.min(0.95, tr.life * 2.1);
+          ctx.beginPath();
+          ctx.arc(tp.x, tp.y, ball.radius * tp.scale * 1.05, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillStyle = `rgba(34, 197, 94, ${tr.life * 2.5})`;
+          ctx.beginPath();
+          ctx.arc(tp.x, tp.y, ball.radius * tp.scale * 0.85, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      const sh = worldToScreen(ball.x, 0, ball.z);
+      const heightFade = Math.max(0.25, 1 - ball.y / 320);
+      ctx.save();
+      ctx.fillStyle = `rgba(0, 0, 0, ${0.42 * heightFade})`;
+      ctx.beginPath();
+      ctx.ellipse(sh.x, sh.y, ball.radius * sh.scale * heightFade, ball.radius * 0.48 * sh.scale * heightFade, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      const bp = worldToScreen(ball.x, ball.y, ball.z);
+      const r = ball.radius * bp.scale;
+
+      if (ball.isRainbowUlt) {
+        const hue = (performance.now() * 0.6) % 360;
+        const grad = ctx.createRadialGradient(bp.x - r * 0.3, bp.y - r * 0.3, r * 0.1, bp.x, bp.y, r * 1.25);
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.55, `hsl(${hue}, 95%, 58%)`);
+        grad.addColorStop(1, `hsl(${(hue + 140) % 360}, 95%, 45%)`);
+        ctx.fillStyle = grad;
+      } else {
+        const grad = ctx.createRadialGradient(bp.x - r * 0.3, bp.y - r * 0.3, r * 0.1, bp.x, bp.y, r);
+        grad.addColorStop(0, '#fb923c');
+        grad.addColorStop(0.65, '#ea580c');
+        grad.addColorStop(1, '#7c2d12');
+        ctx.fillStyle = grad;
+      }
+
+      ctx.beginPath();
+      ctx.arc(bp.x, bp.y, r, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(24, 24, 27, 0.75)';
+      ctx.lineWidth = Math.max(1, 1.4 * bp.scale);
+      ctx.beginPath();
+      ctx.moveTo(bp.x - r, bp.y);
+      ctx.lineTo(bp.x + r, bp.y);
+      ctx.moveTo(bp.x, bp.y - r);
+      ctx.lineTo(bp.x, bp.y + r);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawNBA2KShotMeter() {
+      if (!game.shotMeter.active) return;
+
+      const headPos = worldToScreen(player.x, player.y + 150, player.z);
+      const cx = headPos.x + 42;
+      const cy = headPos.y + 12;
+      const radius = 38;
+      const startAngle = Math.PI * 0.72;
+      const endAngle = Math.PI * 1.48;
+      const totalSpan = endAngle - startAngle;
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(15, 23, 42, 0.88)';
+      ctx.lineWidth = 12;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, startAngle, endAngle);
+      ctx.stroke();
+
+      const gStart = startAngle + totalSpan * (game.shotMeter.greenCenter - game.shotMeter.greenWidth * 0.5);
+      const gEnd = startAngle + totalSpan * (game.shotMeter.greenCenter + game.shotMeter.greenWidth * 0.5);
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 10;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, gStart, gEnd);
+      ctx.stroke();
+
+      const fillEnd = startAngle + totalSpan * game.shotMeter.value;
+      const inGreen = Math.abs(game.shotMeter.value - game.shotMeter.greenCenter) <= game.shotMeter.greenWidth * 0.5;
+      ctx.strokeStyle = inGreen ? '#4ade80' : '#facc15';
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, startAngle, fillEnd);
+      ctx.stroke();
+
+      const tipX = cx + Math.cos(fillEnd) * radius;
+      const tipY = cy + Math.sin(fillEnd) * radius;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(tipX, tipY, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.font = 'bold 11px Oswald, sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText(game.shotMeter.isDunk ? 'DUNK' : '2K SHOT', cx, cy + 22);
+      ctx.restore();
+    }
+
+    function drawAnimeUltCutIn() {
+      if (game.animeCutInTimer <= 0 && game.ultScoreCloseUpTimer <= 0) return;
+
+      const activeTimer = Math.max(game.animeCutInTimer, game.ultScoreCloseUpTimer);
+      const alpha = Math.min(1, activeTimer * 1.6);
+      ctx.save();
+
+      const barH = Math.round(H * 0.085 * alpha);
+      ctx.fillStyle = `rgba(5, 5, 10, ${0.92 * alpha})`;
+      ctx.fillRect(0, 0, W, barH);
+      ctx.fillRect(0, H - barH, W, barH);
+
+      const cx = W * 0.5;
+      const cy = H * 0.48;
+      const lineCount = 56;
+      for (let i = 0; i < lineCount; i++) {
+        const ang = (i / lineCount) * Math.PI * 2 + performance.now() * 0.009;
+        const innerR = Math.min(W, H) * (0.26 + (i % 3) * 0.05);
+        const outerR = Math.max(W, H) * 0.88;
+        ctx.strokeStyle = i % 2 === 0
+          ? `rgba(255, 255, 255, ${0.24 * alpha})`
+          : `rgba(232, 121, 249, ${0.3 * alpha})`;
+        ctx.lineWidth = (i % 4 === 0 ? 4.5 : 2);
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(ang) * innerR, cy + Math.sin(ang) * innerR);
+        ctx.lineTo(cx + Math.cos(ang) * outerR, cy + Math.sin(ang) * outerR);
+        ctx.stroke();
+      }
+
+      if (game.animeCutInTimer > 0.35) {
+        const bannerAlpha = Math.min(1, (game.animeCutInTimer - 0.35) * 1.8);
+        const slashH = 78;
+        const slashY = H * 0.22;
+        ctx.save();
+        ctx.translate(W * 0.5, slashY);
+        ctx.rotate(-0.045);
+
+        const bannerGrad = ctx.createLinearGradient(-W * 0.5, 0, W * 0.5, 0);
+        bannerGrad.addColorStop(0, `rgba(190, 24, 93, ${0.92 * bannerAlpha})`);
+        bannerGrad.addColorStop(0.5, `rgba(109, 40, 217, ${0.95 * bannerAlpha})`);
+        bannerGrad.addColorStop(1, `rgba(14, 165, 233, ${0.92 * bannerAlpha})`);
+        ctx.fillStyle = bannerGrad;
+        ctx.fillRect(-W * 0.6, -slashH * 0.5, W * 1.2, slashH);
+
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.95 * bannerAlpha})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(-W * 0.6, -slashH * 0.5);
+        ctx.lineTo(W * 0.6, -slashH * 0.5);
+        ctx.moveTo(-W * 0.6, slashH * 0.5);
+        ctx.lineTo(W * 0.6, slashH * 0.5);
+        ctx.stroke();
+
+        ctx.font = 'bold 44px Teko, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = `rgba(255, 255, 255, ${bannerAlpha})`;
+        ctx.fillText('★ ULTIMATE: RAINBOW HEEL FLICK ★', 0, 2);
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+
+    function drawParticlesAndTexts() {
+      for (const sw of game.rimShockwaves) {
+        const sp = worldToScreen(sw.x, sw.y, sw.z);
+        const a = Math.max(0, sw.life / sw.maxLife);
+        ctx.save();
+        ctx.strokeStyle = `rgba(232, 121, 249, ${a * 0.9})`;
+        ctx.lineWidth = 5 * a;
+        ctx.beginPath();
+        ctx.ellipse(sp.x, sp.y, sw.radius * sp.scale, sw.radius * 0.55 * sp.scale, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      for (const pt of game.particles) {
+        const pp = worldToScreen(pt.x, pt.y, pt.z);
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, pt.life / pt.maxLife);
+        ctx.fillStyle = pt.color;
+        ctx.beginPath();
+        ctx.arc(pp.x, pp.y, pt.size * pp.scale, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      for (const ft of game.floatingTexts) {
+        const fp = worldToScreen(ft.x, ft.y, ft.z);
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, ft.life * 1.4);
+        ctx.font = 'bold 26px Teko, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 4;
+        ctx.strokeText(ft.text, fp.x, fp.y);
+        ctx.fillStyle = ft.color;
+        ctx.fillText(ft.text, fp.x, fp.y);
+        ctx.restore();
+      }
+    }
+
+    function render() {
+      ctx.clearRect(0, 0, W, H);
+      drawBackgroundAndCourt();
+
+      const renderables = [
+        { depth: worldToScreen(COURT.hoopX, 0, COURT.hoopZ).depth, draw: drawHoopSystem },
+        { depth: worldToScreen(player.x, 0, player.z).depth, draw: () => drawRagdollPlayer(player) },
+        { depth: worldToScreen(cpu.x, 0, cpu.z).depth, draw: () => drawRagdollPlayer(cpu) },
+        { depth: worldToScreen(ball.x, 0, ball.z).depth, draw: drawBasketball }
+      ];
+      renderables.sort((a, b) => b.depth - a.depth);
+      for (const item of renderables) {
+        item.draw();
+      }
+
+      drawParticlesAndTexts();
+      drawNBA2KShotMeter();
+      drawAnimeUltCutIn();
+    }
+
+    // =========================================================================
+    // 11. MATCH FLOW, INTRO & MAIN MENU CONTROLS
+    // =========================================================================
+    const overlayModal = document.getElementById('overlayModal');
+    const startBtn = document.getElementById('startBtn');
+    const muteBtn = document.getElementById('muteBtn');
+    const muteLabel = document.getElementById('muteLabel');
+    const menuMuteBtn = document.getElementById('menuMuteBtn');
+    const menuMuteLabel = document.getElementById('menuMuteLabel');
+    const musicBtn = document.getElementById('musicBtn');
+    const musicLabel = document.getElementById('musicLabel');
+    const menuMusicBtn = document.getElementById('menuMusicBtn');
+    const menuMusicLabel = document.getElementById('menuMusicLabel');
+    const skipIntroBtn = document.getElementById('skipIntroBtn');
+    const replayIntroBtn = document.getElementById('replayIntroBtn');
+
+    // Intro click-anywhere audio unlock or skip
+    introOverlay.addEventListener('click', (e) => {
+      if (e.target.closest('#skipIntroBtn')) return;
+      sfx.init();
+      sfx.setMusicMode('intro');
+      const promptEl = document.getElementById('introAudioPrompt');
+      if (promptEl) promptEl.classList.add('hidden');
+      if (game.introStageIndex >= 0) {
+        sfx.playIntroSting();
+      }
+    });
+
+    skipIntroBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sfx.init();
+      finishIntroToMenu();
+    });
+
+    replayIntroBtn.addEventListener('click', () => {
+      sfx.init();
+      sfx.playMenuSelect();
+      startIntroSequence();
+    });
+
+    // Main Menu Tab Switcher (Signature Moveset vs Blacktop Rules)
+    const tabMovesBtn = document.getElementById('tabMovesBtn');
+    const tabTipsBtn = document.getElementById('tabTipsBtn');
+    const panelMoveset = document.getElementById('panelMoveset');
+    const panelRules = document.getElementById('panelRules');
+
+    tabMovesBtn.addEventListener('click', () => {
+      sfx.init();
+      sfx.playMenuSelect();
+      tabMovesBtn.className = 'skew-2k flex-1 py-2.5 px-4 rounded-sm border-2 border-amber-400 bg-amber-500/20 text-xs font-bold tracking-widest text-amber-300 cursor-pointer transition';
+      tabTipsBtn.className = 'skew-2k flex-1 py-2.5 px-4 rounded-sm border border-white/15 gloss-panel text-xs font-bold tracking-widest text-neutral-300 hover:text-white cursor-pointer transition';
+      panelMoveset.classList.remove('hidden');
+      panelRules.classList.add('hidden');
+    });
+
+    tabTipsBtn.addEventListener('click', () => {
+      sfx.init();
+      sfx.playMenuSelect();
+      tabTipsBtn.className = 'skew-2k flex-1 py-2.5 px-4 rounded-sm border-2 border-amber-400 bg-amber-500/20 text-xs font-bold tracking-widest text-amber-300 cursor-pointer transition';
+      tabMovesBtn.className = 'skew-2k flex-1 py-2.5 px-4 rounded-sm border border-white/15 gloss-panel text-xs font-bold tracking-widest text-neutral-300 hover:text-white cursor-pointer transition';
+      panelRules.classList.remove('hidden');
+      panelMoveset.classList.add('hidden');
+    });
+
+    // Hover SFX on menu interactive controls
+    document.querySelectorAll('.menu-tile, .diff-btn, #tabMovesBtn, #tabTipsBtn, #replayIntroBtn, #menuMuteBtn, #menuMusicBtn').forEach((el) => {
+      el.addEventListener('mouseenter', () => sfx.playMenuHover());
+    });
+
+    const diffButtons = document.querySelectorAll('.diff-btn');
+    const diffDescText = document.getElementById('diffDescText');
+    diffButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        sfx.init();
+        sfx.playMenuSelect();
+        selectedDifficulty = btn.dataset.diff;
+        const cfg = AI_LEVELS[selectedDifficulty];
+        diffDescText.textContent = cfg.desc;
+        document.getElementById('cpuDifficultyBadge').textContent = `CPU • ${selectedDifficulty}`;
+        document.getElementById('diffRatingBadge').textContent = cfg.ovr;
+
+        document.getElementById('statSpeedVal').textContent = cfg.statSpeed;
+        document.getElementById('statSpeedBar').style.width = `${cfg.statSpeed}%`;
+        document.getElementById('statDefVal').textContent = cfg.statDef;
+        document.getElementById('statDefBar').style.width = `${cfg.statDef}%`;
+        document.getElementById('statShotVal').textContent = cfg.statShot;
+        document.getElementById('statShotBar').style.width = `${cfg.statShot}%`;
+
+        diffButtons.forEach((b) => {
+          if (b.dataset.diff === selectedDifficulty) {
+            b.className = 'diff-btn py-2 px-1.5 rounded-xs border-2 border-amber-400 bg-amber-500/20 text-[11px] font-bold tracking-wider text-amber-300 cursor-pointer transition';
+          } else {
+            b.className = 'diff-btn py-2 px-1.5 rounded-xs border border-white/15 bg-neutral-900/90 text-[11px] font-bold tracking-wider text-neutral-300 hover:border-white/40 cursor-pointer transition';
+          }
+        });
+      });
+    });
+
+    function syncMuteLabels() {
+      const label = sfx.muted ? 'SFX: OFF' : 'SFX: ON';
+      muteLabel.textContent = label;
+      menuMuteLabel.textContent = label;
+
+      const mLabel = sfx.musicMuted ? 'MUSIC: OFF' : 'MUSIC: ON';
+      musicLabel.textContent = mLabel;
+      menuMusicLabel.textContent = mLabel;
+    }
+
+    muteBtn.addEventListener('click', () => {
+      sfx.toggleMute();
+      syncMuteLabels();
+    });
+    menuMuteBtn.addEventListener('click', () => {
+      sfx.toggleMute();
+      syncMuteLabels();
+    });
+    musicBtn.addEventListener('click', () => {
+      sfx.toggleMusic();
+      syncMuteLabels();
+    });
+    menuMusicBtn.addEventListener('click', () => {
+      sfx.toggleMusic();
+      syncMuteLabels();
+    });
+
+    function startMatch() {
+      sfx.init();
+      sfx.playMenuSelect();
+      sfx.setMusicMode('hiphop');
+      game.mode = 'playing';
+      game.playerScore = 0;
+      game.cpuScore = 0;
+      game.playerStreak = 0;
+      game.ultReady = false;
+      game.animeCutInTimer = 0;
+      game.ultScoreCloseUpTimer = 0;
+      game.throwCameraTimer = 0;
+      game.activeThrow = null;
+      game.running = true;
+      game.checkBallTimer = 0.65;
+      game.shotMeter.active = false;
+      game.particles = [];
+      game.floatingTexts = [];
+      game.rimShockwaves = [];
+
+      document.getElementById('playerScore').textContent = '0';
+      document.getElementById('cpuScore').textContent = '0';
+      document.getElementById('cpuDifficultyBadge').textContent = `CPU • ${selectedDifficulty}`;
+      updateStreakHUD();
+
+      const playerStartsBall = Math.random() < 0.5;
+
+      player.x = 0;
+      player.y = 0;
+      player.z = playerStartsBall ? 210 : 320;
+      player.vx = 0;
+      player.vy = 0;
+      player.vz = 0;
+      player.state = 'active';
+      player.stamina = 100;
+      player.hype = 25;
+      player.throwCooldown = 15.0;
+      player.throwTimer = 0;
+      player.buildSkeleton();
+
+      cpu.x = 0;
+      cpu.y = 0;
+      cpu.z = playerStartsBall ? 320 : 210;
+      cpu.vx = 0;
+      cpu.vy = 0;
+      cpu.vz = 0;
+      cpu.state = 'active';
+      cpu.stamina = 100;
+      cpu.throwCooldown = 15.0;
+      cpu.throwTimer = 0;
+      cpu.buildSkeleton();
+
+      ball.owner = playerStartsBall ? player : cpu;
+      ball.inShot = false;
+      ball.isDunkShot = false;
+      ball.isEastbayDunk = false;
+      ball.isRainbowUlt = false;
+      ball.trail = [];
+
+      introOverlay.classList.add('hidden');
+      overlayModal.classList.add('hidden');
+      document.getElementById('hudTop').classList.remove('hidden');
+      document.getElementById('hudBottom').classList.remove('hidden');
+      document.getElementById('mobileControls').classList.remove('hidden');
+
+      showCallout(
+        playerStartsBall ? 'COIN FLIP: YOUR BALL!' : 'COIN FLIP: CPU BALL!',
+        `VS ${selectedDifficulty} • FIRST TO 11 WINS!`,
+        playerStartsBall ? 'gold' : 'blue'
+      );
+    }
+
+    function endMatch(playerWon) {
+      game.running = false;
+      game.mode = 'gameover';
+      document.getElementById('hudTop').classList.add('hidden');
+      document.getElementById('hudBottom').classList.add('hidden');
+      document.getElementById('mobileControls').classList.add('hidden');
+
+      document.getElementById('modalTitle').textContent = playerWon ? 'BLACKTOP CHAMPION!' : 'LOCKDOWN WINS!';
+      document.getElementById('modalDesc').innerHTML = playerWon
+        ? `You dominated the rooftop cage <span class="text-emerald-400 font-bold">${game.playerScore} - ${game.cpuScore}</span> on <span class="text-amber-300 font-bold">${selectedDifficulty}</span> with ankle-breakers, rainbow heel flicks, and spin hook kicks!`
+        : `Lockdown took the rooftop crown <span class="text-sky-400 font-bold">${game.cpuScore} - ${game.playerScore}</span> on <span class="text-amber-300 font-bold">${selectedDifficulty}</span>. Run it back!`;
+      document.getElementById('startBtnText').textContent = 'RUN IT BACK — REMATCH';
+      overlayModal.classList.remove('hidden');
+    }
+
+    startBtn.addEventListener('click', startMatch);
+
+    let lastTime = performance.now();
+    function gameLoop(now) {
+      const dt = Math.min(0.05, (now - lastTime) / 1000);
+      lastTime = now;
+
+      update(dt);
+      render();
+      requestAnimationFrame(gameLoop);
+    }
+
+    window.onload = function () {
+      player.syncSkeletonToPose(0.016, true, false, 0);
+      cpu.syncSkeletonToPose(0.016, false, false, 0);
+      startIntroSequence();
+      requestAnimationFrame(gameLoop);
+    };
+  </script>
+</body>
+</html>
